@@ -347,19 +347,29 @@ function buildRound(players, settings, usedCharacters) {
   };
 }
 
-function MetricCard({ label, value, accent }) {
+function createScoreMap(players, existingScores = {}) {
+  const next = {};
+  players.forEach((player) => {
+    next[player] = existingScores[player] ?? 0;
+  });
+  return next;
+}
+
+function MetricCard({ label, value, accent, isMobile }) {
   return (
     <div
       style={{
         background: "rgba(255,255,255,0.78)",
         borderRadius: 20,
-        padding: 18,
+        padding: isMobile ? 14 : 18,
         border: "1px solid rgba(255,255,255,0.65)",
         boxShadow: "0 10px 24px rgba(32, 36, 80, 0.08)",
       }}
     >
       <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: 24, fontWeight: 800, color: accent || "#111827" }}>{value}</div>
+      <div style={{ fontSize: isMobile ? 18 : 24, fontWeight: 800, color: accent || "#111827" }}>
+        {value}
+      </div>
     </div>
   );
 }
@@ -384,14 +394,6 @@ function PillButton({ active, children, onClick }) {
   );
 }
 
-function createScoreMap(players, existingScores = {}) {
-  const next = {};
-  players.forEach((player) => {
-    next[player] = existingScores[player] ?? 0;
-  });
-  return next;
-}
-
 export default function App() {
   const [playerName, setPlayerName] = useState("");
   const [roomName, setRoomName] = useState("");
@@ -409,11 +411,14 @@ export default function App() {
   const [revealed, setRevealed] = useState(false);
   const [showFinalRevealScreen, setShowFinalRevealScreen] = useState(false);
   const [showFinalResults, setShowFinalResults] = useState(false);
-
   const [competitionMode, setCompetitionMode] = useState(false);
   const [scores, setScores] = useState(() => createScoreMap(["Alon", "Dana", "Yossi", "Maya"]));
   const [roundScored, setRoundScored] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 1200
+  );
 
+  const isMobile = windowWidth < 768;
   const currentAssignment = round?.assignments?.[currentIndex] ?? null;
   const canStart = players.length >= 3;
   const roomPoolCount = useMemo(() => filterCharacters(settings.pool).length, [settings.pool]);
@@ -432,6 +437,15 @@ export default function App() {
   useEffect(() => {
     setScores((prev) => createScoreMap(players, prev));
   }, [players]);
+
+  useEffect(() => {
+    function handleResize() {
+      setWindowWidth(window.innerWidth);
+    }
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   function addPlayer() {
     const trimmed = playerName.trim();
@@ -471,22 +485,16 @@ export default function App() {
       return;
     }
 
-    setPlayers((prev) =>
-      prev.map((player, index) => {
-        if (index !== editingIndex) return player;
-        return trimmed;
-      })
-    );
+    const nextPlayers = players.map((player, index) => (index === editingIndex ? trimmed : player));
+
+    setPlayers(nextPlayers);
 
     setScores((prev) => {
       const next = { ...prev };
       const oldScore = next[oldName] ?? 0;
       delete next[oldName];
       next[trimmed] = oldScore;
-      return createScoreMap(
-        players.map((player, index) => (index === editingIndex ? trimmed : player)),
-        next
-      );
+      return createScoreMap(nextPlayers, next);
     });
 
     setEditingIndex(null);
@@ -607,7 +615,7 @@ export default function App() {
           "radial-gradient(circle at top left, rgba(168, 85, 247, 0.65), transparent 25%), radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.55), transparent 25%), linear-gradient(135deg, #eef2ff 0%, #f5f3ff 35%, #eff6ff 100%)",
         fontFamily: "Inter, Arial, sans-serif",
         color: "#111827",
-        padding: 24,
+        padding: isMobile ? 12 : 24,
       }}
     >
       <div
@@ -615,30 +623,48 @@ export default function App() {
           maxWidth: 1320,
           margin: "0 auto",
           display: "grid",
-          gridTemplateColumns: "1.12fr 0.88fr",
-          gap: 24,
+          gridTemplateColumns: isMobile ? "1fr" : "1.12fr 0.88fr",
+          gap: isMobile ? 16 : 24,
         }}
       >
         <div
           style={{
             background: "rgba(255,255,255,0.68)",
             backdropFilter: "blur(16px)",
-            borderRadius: 30,
-            padding: 28,
+            borderRadius: isMobile ? 22 : 30,
+            padding: isMobile ? 18 : 28,
             border: "1px solid rgba(255,255,255,0.7)",
             boxShadow: "0 18px 40px rgba(76, 29, 149, 0.14)",
           }}
         >
-          <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 10, color: "#172554" }}>
+          <div
+            style={{
+              fontSize: isMobile ? 28 : 36,
+              fontWeight: 900,
+              marginBottom: 10,
+              color: "#172554",
+              lineHeight: 1.05,
+              textAlign: "center",
+            }}
+          >
             Impostor: Famous People
           </div>
-          <div style={{ color: "#475569", marginBottom: 28, fontSize: 17, lineHeight: 1.5 }}>
+
+          <div
+            style={{
+              color: "#475569",
+              marginBottom: 28,
+              fontSize: isMobile ? 15 : 17,
+              lineHeight: 1.5,
+              textAlign: "center",
+            }}
+          >
             One-word English hints, adjustable difficulty, editable player names, room memory, and optional competition mode.
           </div>
 
           <div style={{ display: "grid", gap: 16, marginBottom: 26 }}>
             <label style={{ display: "grid", gap: 8 }}>
-              <span style={{ fontWeight: 700, color: "#172554" }}>Room name</span>
+              <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Room name</span>
               <input
                 value={roomName}
                 onChange={(e) => setRoomName(e.target.value)}
@@ -655,8 +681,8 @@ export default function App() {
             </label>
 
             <div style={{ display: "grid", gap: 10 }}>
-              <span style={{ fontWeight: 700, color: "#172554" }}>Character pool</span>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Character pool</span>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
                 {POOL_OPTIONS.map((option) => (
                   <PillButton
                     key={option.value}
@@ -670,7 +696,7 @@ export default function App() {
             </div>
 
             <div style={{ display: "grid", gap: 10 }}>
-              <span style={{ fontWeight: 700, color: "#172554" }}>Hint difficulty</span>
+              <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Hint difficulty</span>
               <select
                 value={settings.difficulty}
                 onChange={(e) => setSettings((prev) => ({ ...prev, difficulty: e.target.value }))}
@@ -694,8 +720,8 @@ export default function App() {
             </div>
 
             <div style={{ display: "grid", gap: 10 }}>
-              <span style={{ fontWeight: 700, color: "#172554" }}>Competition mode</span>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Competition mode</span>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
                 <PillButton active={competitionMode} onClick={toggleCompetitionMode}>
                   {competitionMode ? "Competition ON" : "Competition OFF"}
                 </PillButton>
@@ -720,26 +746,34 @@ export default function App() {
             </div>
 
             <label style={{ display: "grid", gap: 8 }}>
-              <span style={{ fontWeight: 700, color: "#172554" }}>Add player</span>
-              <div style={{ display: "flex", gap: 12 }}>
+              <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Add player</span>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: isMobile ? "1fr" : "1fr auto",
+                  gap: 12,
+                }}
+              >
                 <input
                   value={playerName}
                   onChange={(e) => setPlayerName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addPlayer()}
                   placeholder="Player name"
                   style={{
-                    flex: 1,
+                    width: "100%",
                     padding: 14,
                     borderRadius: 18,
                     border: "1px solid rgba(99, 102, 241, 0.18)",
                     background: "rgba(255,255,255,0.82)",
                     fontSize: 16,
                     outline: "none",
+                    boxSizing: "border-box",
                   }}
                 />
                 <button
                   onClick={addPlayer}
                   style={{
+                    width: isMobile ? "100%" : "auto",
                     padding: "14px 20px",
                     borderRadius: 18,
                     border: 0,
@@ -757,10 +791,19 @@ export default function App() {
           </div>
 
           <div style={{ marginBottom: 26 }}>
-            <div style={{ fontWeight: 800, marginBottom: 12, color: "#172554", fontSize: 20 }}>
+            <div
+              style={{
+                fontWeight: 800,
+                marginBottom: 12,
+                color: "#172554",
+                fontSize: isMobile ? 18 : 20,
+                textAlign: "center",
+              }}
+            >
               Players ({players.length})
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center" }}>
               {players.map((player, index) => (
                 <div
                   key={`${player}-${index}`}
@@ -828,18 +871,27 @@ export default function App() {
                 </div>
               ))}
             </div>
-            <div style={{ marginTop: 10, color: "#64748b", fontSize: 14 }}>
+
+            <div style={{ marginTop: 10, color: "#64748b", fontSize: 14, textAlign: "center" }}>
               Click a player name to edit it.
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14, marginBottom: 26 }}>
-            <MetricCard label="Characters in pool" value={roomPoolCount} accent="#4f46e5" />
-            <MetricCard label="Used in this room" value={usedCharacters.length} accent="#7c3aed" />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
+              gap: 14,
+              marginBottom: 26,
+            }}
+          >
+            <MetricCard label="Characters in pool" value={roomPoolCount} accent="#4f46e5" isMobile={isMobile} />
+            <MetricCard label="Used in this room" value={usedCharacters.length} accent="#7c3aed" isMobile={isMobile} />
             <MetricCard
               label="Hint style"
               value={settings.difficulty.charAt(0).toUpperCase() + settings.difficulty.slice(1)}
               accent="#ea580c"
+              isMobile={isMobile}
             />
           </div>
 
@@ -853,7 +905,15 @@ export default function App() {
                 border: "1px solid rgba(99, 102, 241, 0.14)",
               }}
             >
-              <div style={{ fontWeight: 800, marginBottom: 12, color: "#172554", fontSize: 20 }}>
+              <div
+                style={{
+                  fontWeight: 800,
+                  marginBottom: 12,
+                  color: "#172554",
+                  fontSize: isMobile ? 18 : 20,
+                  textAlign: "center",
+                }}
+              >
                 Scoreboard
               </div>
 
@@ -879,7 +939,13 @@ export default function App() {
             </div>
           )}
 
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
+              gap: 12,
+            }}
+          >
             <button
               onClick={startRound}
               disabled={!canStart || (competitionMode && showFinalResults && !roundScored)}
@@ -944,18 +1010,26 @@ export default function App() {
           style={{
             background: "rgba(255,255,255,0.68)",
             backdropFilter: "blur(16px)",
-            borderRadius: 30,
-            padding: 28,
+            borderRadius: isMobile ? 22 : 30,
+            padding: isMobile ? 18 : 28,
             border: "1px solid rgba(255,255,255,0.7)",
             boxShadow: "0 18px 40px rgba(37, 99, 235, 0.14)",
           }}
         >
-          <div style={{ fontSize: 36, fontWeight: 900, marginBottom: 10, color: "#172554" }}>
+          <div
+            style={{
+              fontSize: isMobile ? 28 : 36,
+              fontWeight: 900,
+              marginBottom: 10,
+              color: "#172554",
+              textAlign: "center",
+            }}
+          >
             Private reveal
           </div>
 
           {!round && (
-            <div style={{ color: "#475569", fontSize: 18 }}>
+            <div style={{ color: "#475569", fontSize: isMobile ? 16 : 18, textAlign: "center" }}>
               Start a round, then pass the device between players.
             </div>
           )}
@@ -974,24 +1048,32 @@ export default function App() {
                 <div style={{ fontSize: 12, color: "#64748b", letterSpacing: 1.4, textTransform: "uppercase" }}>
                   Current player
                 </div>
-                <div style={{ fontSize: 34, fontWeight: 900, marginTop: 8, color: "#1e1b4b" }}>
+                <div
+                  style={{
+                    fontSize: isMobile ? 28 : 34,
+                    fontWeight: 900,
+                    marginTop: 8,
+                    color: "#1e1b4b",
+                    lineHeight: 1.05,
+                  }}
+                >
                   {currentAssignment.player}
                 </div>
                 <div style={{ color: "#64748b", marginTop: 8 }}>Only this player should look at the screen.</div>
               </div>
 
               <div
-                onMouseDown={beginHold}
-                onMouseUp={endHold}
-                onMouseLeave={endHold}
-                onTouchStart={beginHold}
-                onTouchEnd={endHold}
+                onPointerDown={beginHold}
+                onPointerUp={endHold}
+                onPointerLeave={endHold}
+                onPointerCancel={endHold}
                 style={{
                   position: "relative",
-                  height: 320,
+                  height: isMobile ? 260 : 320,
                   perspective: "1200px",
                   cursor: "pointer",
                   userSelect: "none",
+                  touchAction: "manipulation",
                 }}
               >
                 <div
@@ -1017,10 +1099,8 @@ export default function App() {
                     boxShadow: "0 18px 36px rgba(49, 46, 129, 0.25)",
                   }}
                 >
-                  <div style={{ fontSize: 14, marginBottom: 14 }}>
-                    Hold to reveal
-                  </div>
-                  <div style={{ fontSize: 32, fontWeight: 900 }}>
+                  <div style={{ fontSize: 14, marginBottom: 14 }}>Hold to reveal</div>
+                  <div style={{ fontSize: isMobile ? 28 : 32, fontWeight: 900, lineHeight: 1.05 }}>
                     Press and hold
                   </div>
                 </div>
@@ -1052,25 +1132,21 @@ export default function App() {
                 >
                   {currentAssignment.isImpostor ? (
                     <>
-                      <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 10 }}>
-                        Your role
-                      </div>
-                      <div style={{ color: "#fee2e2", fontSize: 32, fontWeight: 900 }}>
+                      <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 10 }}>Your role</div>
+                      <div style={{ color: "#fee2e2", fontSize: isMobile ? 28 : 32, fontWeight: 900, lineHeight: 1.05 }}>
                         You are the Impostor
                       </div>
 
                       {settings.impostorGetsHint && (
-                        <div style={{ marginTop: 12, fontSize: 18, fontWeight: 700 }}>
+                        <div style={{ marginTop: 12, fontSize: isMobile ? 16 : 18, fontWeight: 700 }}>
                           Hint: {currentAssignment.hint}
                         </div>
                       )}
                     </>
                   ) : (
                     <>
-                      <div style={{ fontSize: 14, marginBottom: 10 }}>
-                        Your word
-                      </div>
-                      <div style={{ fontSize: 36, fontWeight: 900 }}>
+                      <div style={{ fontSize: 14, marginBottom: 10 }}>Your word</div>
+                      <div style={{ fontSize: isMobile ? 30 : 36, fontWeight: 900, lineHeight: 1.05 }}>
                         {currentAssignment.word}
                       </div>
                     </>
@@ -1078,7 +1154,13 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                  gap: 12,
+                }}
+              >
                 <button
                   onClick={resetRound}
                   style={{
@@ -1115,19 +1197,20 @@ export default function App() {
 
           {showFinalRevealScreen && !showFinalResults && round && (
             <div style={{ textAlign: "center", marginTop: 20 }}>
-              <div style={{ fontSize: 28, fontWeight: 900, marginBottom: 12 }}>
+              <div style={{ fontSize: isMobile ? 24 : 28, fontWeight: 900, marginBottom: 12 }}>
                 Everyone is ready
               </div>
 
               <button
                 onClick={() => setShowFinalResults(true)}
                 style={{
+                  width: isMobile ? "100%" : "auto",
                   padding: "16px 20px",
                   borderRadius: 20,
                   border: 0,
                   background: "#6366f1",
                   color: "white",
-                  fontSize: 20,
+                  fontSize: isMobile ? 18 : 20,
                   fontWeight: 900,
                   cursor: "pointer",
                 }}
@@ -1139,21 +1222,13 @@ export default function App() {
 
           {finished && round && (
             <div style={{ textAlign: "center", marginTop: 20 }}>
-              <div style={{ fontSize: 24, fontWeight: 900 }}>
+              <div style={{ fontSize: isMobile ? 22 : 24, fontWeight: 900 }}>
                 Final round details
               </div>
 
-              <div style={{ marginTop: 10 }}>
-                Word: {round.character.name}
-              </div>
-
-              <div>
-                Hint: {round.selectedHint}
-              </div>
-
-              <div>
-                Impostor: {impostorPlayer}
-              </div>
+              <div style={{ marginTop: 10 }}>Word: {round.character.name}</div>
+              <div>Hint: {round.selectedHint}</div>
+              <div>Impostor: {impostorPlayer}</div>
 
               {competitionMode && (
                 <div
@@ -1170,7 +1245,13 @@ export default function App() {
                   </div>
 
                   {!roundScored ? (
-                    <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                        gap: 12,
+                      }}
+                    >
                       <button
                         onClick={awardImpostorWin}
                         style={{
@@ -1214,6 +1295,7 @@ export default function App() {
                   onClick={startRound}
                   style={{
                     marginTop: 16,
+                    width: isMobile ? "100%" : "auto",
                     padding: "12px 18px",
                     borderRadius: 14,
                     border: 0,
@@ -1232,6 +1314,7 @@ export default function App() {
                   onClick={startRound}
                   style={{
                     marginTop: 16,
+                    width: isMobile ? "100%" : "auto",
                     padding: "12px 18px",
                     borderRadius: 14,
                     border: 0,
