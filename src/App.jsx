@@ -264,6 +264,13 @@ const PLAYER_CARD_COLORS = [
   "linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)",
 ];
 
+const NO_SELECTION_STYLE = {
+  userSelect: "none",
+  WebkitUserSelect: "none",
+  WebkitTouchCallout: "none",
+  WebkitTapHighlightColor: "transparent",
+};
+
 function pickRandom(array) {
   return array[Math.floor(Math.random() * array.length)];
 }
@@ -1067,13 +1074,15 @@ export default function App() {
                 onPointerUp={endHold}
                 onPointerLeave={endHold}
                 onPointerCancel={endHold}
+                onContextMenu={(e) => e.preventDefault()}
+                onSelectStart={(e) => e.preventDefault()}
                 style={{
                   position: "relative",
                   height: isMobile ? 260 : 320,
                   perspective: "1200px",
                   cursor: "pointer",
-                  userSelect: "none",
                   touchAction: "manipulation",
+                  ...NO_SELECTION_STYLE,
                 }}
               >
                 <div
@@ -1097,10 +1106,11 @@ export default function App() {
                     alignItems: "center",
                     textAlign: "center",
                     boxShadow: "0 18px 36px rgba(49, 46, 129, 0.25)",
+                    ...NO_SELECTION_STYLE,
                   }}
                 >
                   <div style={{ fontSize: 14, marginBottom: 14 }}>Hold to reveal</div>
-                  <div style={{ fontSize: isMobile ? 28 : 32, fontWeight: 900, lineHeight: 1.05 }}>
+                  <div draggable={false} style={{ fontSize: isMobile ? 28 : 32, fontWeight: 900, lineHeight: 1.05, ...NO_SELECTION_STYLE }}>
                     Press and hold
                   </div>
                 </div>
@@ -1128,17 +1138,18 @@ export default function App() {
                     alignItems: "center",
                     textAlign: "center",
                     boxShadow: "0 18px 36px rgba(49, 46, 129, 0.25)",
+                    ...NO_SELECTION_STYLE,
                   }}
                 >
                   {currentAssignment.isImpostor ? (
                     <>
                       <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 10 }}>Your role</div>
-                      <div style={{ color: "#fee2e2", fontSize: isMobile ? 28 : 32, fontWeight: 900, lineHeight: 1.05 }}>
+                      <div draggable={false} style={{ color: "#fee2e2", fontSize: isMobile ? 28 : 32, fontWeight: 900, lineHeight: 1.05, ...NO_SELECTION_STYLE }}>
                         You are the Impostor
                       </div>
 
                       {settings.impostorGetsHint && (
-                        <div style={{ marginTop: 12, fontSize: isMobile ? 16 : 18, fontWeight: 700 }}>
+                        <div draggable={false} style={{ marginTop: 12, fontSize: isMobile ? 16 : 18, fontWeight: 700, ...NO_SELECTION_STYLE }}>
                           Hint: {currentAssignment.hint}
                         </div>
                       )}
@@ -1146,7 +1157,7 @@ export default function App() {
                   ) : (
                     <>
                       <div style={{ fontSize: 14, marginBottom: 10 }}>Your word</div>
-                      <div style={{ fontSize: isMobile ? 30 : 36, fontWeight: 900, lineHeight: 1.05 }}>
+                      <div draggable={false} style={{ fontSize: isMobile ? 30 : 36, fontWeight: 900, lineHeight: 1.05, ...NO_SELECTION_STYLE }}>
                         {currentAssignment.word}
                       </div>
                     </>
