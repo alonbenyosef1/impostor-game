@@ -241,6 +241,72 @@ const CHARACTER_BANK = [
   { name: "Manuel Neuer", hints: ["Keeper", "Sweeper", "Germany"], tags: ["sports", "global"] },
   { name: "Iker Casillas", hints: ["Keeper", "Spain", "Calm"], tags: ["sports", "global"] },
   { name: "Alex Morgan", hints: ["Football", "Blonde", "American"], tags: ["sports", "global"] },
+
+  { name: "Yonit Levi", hints: ["podcast", "Unholy", "composed"], tags: ["tv", "israel"] },
+  { name: "Danny Kushmaro", hints: ["marathon", "helmet", "breath"], tags: ["tv", "israel"] },
+  { name: "Lucy Ayoub", hints: ["poetry", "bilingual", "stage"], tags: ["tv", "israel"] },
+  { name: "Lucy Aharish", hints: ["torch", "wedding", "debate"], tags: ["tv", "israel"] },
+  { name: "Ofira Asayag", hints: ["duo", "outburst", "storm"], tags: ["tv", "israel"] },
+  { name: "Miki Haimovich", hints: ["plastic", "meatless", "green"], tags: ["tv", "israel"] },
+  { name: "Geula Even", hints: ["anthem", "ceremony", "poise"], tags: ["tv", "israel"] },
+  { name: "Dana Weiss", hints: ["panel", "direct", "interrupt"], tags: ["tv", "israel"] },
+  { name: "Hila Korach", hints: ["clinic", "Galileo", "multitask"], tags: ["tv", "israel"] },
+  { name: "Tamar Ish-Shalom", hints: ["diplomacy", "foreign", "reserved"], tags: ["tv", "israel"] },
+  { name: "Guy Pines", hints: ["scoop", "rumor", "camera"], tags: ["tv", "israel"] },
+  { name: "Haim Etgar", hints: ["trap", "victim", "expose"], tags: ["tv", "israel"] },
+  { name: "Kobi Meidan", hints: ["books", "conversation", "measured"], tags: ["tv", "israel"] },
+  { name: "Assaf Harel", hints: ["late", "podcast", "dry"], tags: ["tv", "israel"] },
+  { name: "Eyal Berkovic", hints: ["argument", "shirt", "temper"], tags: ["sports", "israel"] },
+  { name: "Guri Alfi", hints: ["roots", "journey", "warmth"], tags: ["tv", "israel"] },
+  { name: "Assi Cohen", hints: ["faces", "voice", "switch"], tags: ["tv", "israel"] },
+  { name: "Eyal Kitzis", hints: ["satire", "straightman", "smirk"], tags: ["tv", "israel"] },
+  { name: "Yuval Semo", hints: ["rubber", "characters", "elastic"], tags: ["tv", "israel"] },
+  { name: "Ofer Shechter", hints: ["chaos", "youth", "prank"], tags: ["tv", "israel"] },
+  { name: "Adir Miller", hints: ["traffic", "family", "neat"], tags: ["tv", "israel"] },
+  { name: "Maya Wertheimer", hints: ["vlog", "ring", "heels"], tags: ["tv", "israel"] },
+  { name: "Shira Haas", hints: ["wig", "whisper", "tiny"], tags: ["cinema", "israel"] },
+  { name: "Michael Aloni", hints: ["hat", "beard", "gentle"], tags: ["cinema", "israel"] },
+  { name: "Tzachi Halevy", hints: ["undercover", "voice", "stubble"], tags: ["cinema", "israel"] },
+  { name: "Aki Avni", hints: ["comeback", "passport", "brooding"], tags: ["cinema", "israel"] },
+  { name: "Ayelet Zurer", hints: ["therapy", "prestige", "poise"], tags: ["cinema", "israel"] },
+  { name: "Sasson Gabai", hints: ["band", "mustache", "silence"], tags: ["cinema", "israel"] },
+  { name: "Chaim Topol", hints: ["milk", "village", "legend"], tags: ["cinema", "israel"] },
+  { name: "Lior Ashkenazi", hints: ["wedding", "monologue", "intense"], tags: ["cinema", "israel"] },
+  { name: "Keren Mor", hints: ["sarcasm", "ensemble", "dry"], tags: ["tv", "israel"] },
+  { name: "Rotem Abuhab", hints: ["curly", "chaos", "warm"], tags: ["tv", "israel"] },
+  { name: "Shahar Hasson", hints: ["heckler", "chaos", "loud"], tags: ["tv", "israel"] },
+  { name: "Idan Raichel", hints: ["project", "dreads", "keys"], tags: ["music", "israel"] },
+  { name: "Keren Peles", hints: ["piano", "notebook", "softness"], tags: ["music", "israel"] },
+  { name: "Rita", hints: ["Persian", "shawl", "diva"], tags: ["music", "israel"] },
+  { name: "Shiri Maimon", hints: ["ballad", "spotlight", "belt"], tags: ["music", "israel"] },
+  { name: "Harel Skaat", hints: ["falsetto", "elegant", "spotlight"], tags: ["music", "israel"] },
+  { name: "Harel Moyal", hints: ["finale", "soft", "believer"], tags: ["music", "israel"] },
+  { name: "Nathan Goshen", hints: ["hoodie", "quiet", "notebook"], tags: ["music", "israel"] },
+  { name: "Eden Hason", hints: ["anthem", "sensitive", "crowd"], tags: ["music", "israel"] },
+  { name: "Narkis", hints: ["barefoot", "wedding", "faith"], tags: ["music", "israel"] },
+  { name: "Mosh Ben Ari", hints: ["desert", "sun", "tribe"], tags: ["music", "israel"] },
+  { name: "Eliad Nachum", hints: ["breakdance", "childhood", "hoodie"], tags: ["music", "israel"] },
+  { name: "Ran Danker", hints: ["panic", "switch", "spotlight"], tags: ["music", "israel"] },
+  { name: "Ravid Plotnik", hints: ["notebook", "beard", "stories"], tags: ["music", "israel"] },
+  { name: "Tuna", hints: ["hoodie", "neighborhood", "concrete"], tags: ["music", "israel"] },
+  { name: "Akiva", hints: ["guitar", "faith", "smile"], tags: ["music", "israel"] },
+  { name: "Nasrin Kadri", hints: ["wedding", "power", "melisma"], tags: ["music", "israel"] },
+  { name: "Jasmin Moallem", hints: ["night", "whisper", "attitude"], tags: ["music", "israel"] },
+  { name: "Dikla", hints: ["shawl", "raw", "grain"], tags: ["music", "israel"] },
+  { name: "Yuval Dayan", hints: ["chair", "raspy", "soul"], tags: ["music", "israel"] },
+  { name: "Netta Barzilai", hints: ["loop", "feathers", "quirky"], tags: ["music", "israel"] },
+  { name: "Yarden Gerbi", hints: ["tatami", "selfie", "grit"], tags: ["sports", "israel"] },
+  { name: "Ori Sasson", hints: ["heavy", "tatami", "grit"], tags: ["sports", "israel"] },
+  { name: "Linoy Ashram", hints: ["ribbon", "grace", "focus"], tags: ["sports", "israel"] },
+  { name: "Peter Paltchik", hints: ["tattoo", "grip", "pressure"], tags: ["sports", "israel"] },
+  { name: "Artem Dolgopyat", hints: ["floor", "twist", "landing"], tags: ["sports", "israel"] },
+  { name: "Deni Avdija", hints: ["draft", "lefty", "overseas"], tags: ["sports", "israel"] },
+  { name: "Lior Eliyahu", hints: ["hook", "yellow", "silk"], tags: ["sports", "israel"] },
+  { name: "Tal Brody", hints: ["map", "speech", "legend"], tags: ["sports", "israel"] },
+  { name: "Yael Arad", hints: ["first", "tatami", "trailblazer"], tags: ["sports", "israel"] },
+  { name: "Gal Fridman", hints: ["board", "wind", "spray"], tags: ["sports", "israel"] },
+  { name: "Yossi Benayoun", hints: ["captain", "dribble", "passport"], tags: ["sports", "israel"] },
+  { name: "Titi Aynaw", hints: ["crown", "spotlight", "trailblazer"], tags: ["public", "israel"] }
 ];
 
 const POOL_OPTIONS = [
@@ -250,6 +316,7 @@ const POOL_OPTIONS = [
 ];
 
 const DIFFICULTY_OPTIONS = [
+  { value: "none", label: "No hint" },
   { value: "easy", label: "Easy" },
   { value: "medium", label: "Medium" },
   { value: "hard", label: "Hard" },
@@ -323,6 +390,7 @@ function clearRoomHistory(roomName) {
 }
 
 function getHintByDifficulty(hints, difficulty) {
+  if (difficulty === "none") return "";
   if (!Array.isArray(hints) || hints.length === 0) return "";
   if (difficulty === "easy") return hints[0] ?? hints[1] ?? hints[2] ?? "";
   if (difficulty === "medium") return hints[1] ?? hints[0] ?? hints[2] ?? "";
@@ -511,6 +579,25 @@ export default function App() {
   function startRound() {
     if (!canStart) return;
     if (competitionMode && showFinalResults && !roundScored) return;
+
+    const nextRound = buildRound(players, settings, usedCharacters);
+    setRound(nextRound);
+    setCurrentIndex(0);
+    setRevealed(false);
+    setShowFinalRevealScreen(false);
+    setShowFinalResults(false);
+    setRoundScored(false);
+
+    const nextUsed = [...usedCharacters, nextRound.character.name];
+    setUsedCharacters(nextUsed);
+    if (roomName.trim()) {
+      saveRoomHistory(roomName, nextUsed);
+    }
+  }
+
+  function skipRound() {
+    if (!canStart) return;
+    if (!round) return;
 
     const nextRound = buildRound(players, settings, usedCharacters);
     setRound(nextRound);
@@ -896,7 +983,7 @@ export default function App() {
             <MetricCard label="Used in this room" value={usedCharacters.length} accent="#7c3aed" isMobile={isMobile} />
             <MetricCard
               label="Hint style"
-              value={settings.difficulty.charAt(0).toUpperCase() + settings.difficulty.slice(1)}
+              value={settings.difficulty === "none" ? "No hint" : settings.difficulty.charAt(0).toUpperCase() + settings.difficulty.slice(1)}
               accent="#ea580c"
               isMobile={isMobile}
             />
@@ -949,7 +1036,7 @@ export default function App() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
+              gridTemplateColumns: isMobile ? "1fr" : "repeat(4, minmax(0, 1fr))",
               gap: 12,
             }}
           >
@@ -977,6 +1064,23 @@ export default function App() {
               }}
             >
               Start round
+            </button>
+
+            <button
+              onClick={skipRound}
+              disabled={!round}
+              style={{
+                padding: "14px 22px",
+                borderRadius: 18,
+                border: 0,
+                background: !round ? "#9ca3af" : "linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%)",
+                color: "white",
+                cursor: !round ? "not-allowed" : "pointer",
+                fontWeight: 800,
+                boxShadow: !round ? "none" : "0 12px 24px rgba(14, 165, 233, 0.22)",
+              }}
+            >
+              Skip round
             </button>
 
             <button
@@ -1148,7 +1252,7 @@ export default function App() {
                         You are the Impostor
                       </div>
 
-                      {settings.impostorGetsHint && (
+                      {settings.impostorGetsHint && currentAssignment.hint && (
                         <div draggable={false} style={{ marginTop: 12, fontSize: isMobile ? 16 : 18, fontWeight: 700, ...NO_SELECTION_STYLE }}>
                           Hint: {currentAssignment.hint}
                         </div>
@@ -1168,7 +1272,7 @@ export default function App() {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
                   gap: 12,
                 }}
               >
@@ -1185,6 +1289,22 @@ export default function App() {
                   }}
                 >
                   End round
+                </button>
+
+                <button
+                  onClick={skipRound}
+                  style={{
+                    padding: "14px 18px",
+                    borderRadius: 18,
+                    border: 0,
+                    background: "linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%)",
+                    color: "white",
+                    cursor: "pointer",
+                    fontWeight: 800,
+                    boxShadow: "0 12px 24px rgba(14, 165, 233, 0.24)",
+                  }}
+                >
+                  Skip round
                 </button>
 
                 <button
@@ -1238,7 +1358,7 @@ export default function App() {
               </div>
 
               <div style={{ marginTop: 10 }}>Word: {round.character.name}</div>
-              <div>Hint: {round.selectedHint}</div>
+              <div>Hint: {round.selectedHint || "No hint"}</div>
               <div>Impostor: {impostorPlayer}</div>
 
               {competitionMode && (
