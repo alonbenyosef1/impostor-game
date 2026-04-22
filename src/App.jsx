@@ -309,10 +309,204 @@ const CHARACTER_BANK = [
   { name: "Titi Aynaw", hints: ["crown", "spotlight", "trailblazer"], tags: ["public", "israel"] }
 ];
 
-const POOL_OPTIONS = [
+const PLACES_OBJECTS_BANK = [
+  { name: "Cinema", hints: ["Screen", "Popcorn", "Dark"], tags: ["places_objects", "global", "place"] },
+  { name: "Theater", hints: ["Stage", "Curtain", "Applause"], tags: ["places_objects", "global", "place"] },
+  { name: "Bowling Alley", hints: ["Pins", "Lanes", "Strikes"], tags: ["places_objects", "global", "place"] },
+  { name: "Arcade", hints: ["Tokens", "Neon", "Buttons"], tags: ["places_objects", "global", "place"] },
+  { name: "Escape Room", hints: ["Puzzles", "Locked", "Timer"], tags: ["places_objects", "global", "place"] },
+  { name: "Aquarium", hints: ["Glass", "Fish", "Blue"], tags: ["places_objects", "global", "place"] },
+  { name: "Zoo", hints: ["Animals", "Paths", "Cages"], tags: ["places_objects", "global", "place"] },
+  { name: "Museum", hints: ["Exhibits", "Quiet", "History"], tags: ["places_objects", "global", "place"] },
+  { name: "Art Gallery", hints: ["Frames", "Whitewalls", "Curator"], tags: ["places_objects", "global", "place"] },
+  { name: "Library", hints: ["Shelves", "Silence", "Borrow"], tags: ["places_objects", "global", "place"] },
+  { name: "Bookstore", hints: ["Browse", "Novel", "Receipt"], tags: ["places_objects", "global", "place"] },
+  { name: "Coffee Shop", hints: ["Beans", "Steam", "Laptop"], tags: ["places_objects", "global", "place"] },
+  { name: "Bakery", hints: ["Bread", "Oven", "Morning"], tags: ["places_objects", "global", "place"] },
+  { name: "Restaurant", hints: ["Menu", "Waiter", "Table"], tags: ["places_objects", "global", "place"] },
+  { name: "Diner", hints: ["Booth", "Refill", "LateNight"], tags: ["places_objects", "global", "place"] },
+  { name: "Bar", hints: ["Glasses", "Music", "Counter"], tags: ["places_objects", "global", "place"] },
+  { name: "Rooftop Bar", hints: ["Skyline", "Cocktails", "Night"], tags: ["places_objects", "global", "place"] },
+  { name: "Nightclub", hints: ["Bass", "Lights", "Crowd"], tags: ["places_objects", "global", "place"] },
+  { name: "Karaoke Room", hints: ["Mic", "Lyrics", "Applause"], tags: ["places_objects", "global", "place"] },
+  { name: "Concert Hall", hints: ["Seats", "Orchestra", "Acoustics"], tags: ["places_objects", "global", "place"] },
+  { name: "Opera House", hints: ["Balcony", "Aria", "Formal"], tags: ["places_objects", "global", "place"] },
+  { name: "Jazz Club", hints: ["Saxophone", "Dim", "Improvisation"], tags: ["places_objects", "global", "place"] },
+  { name: "Comedy Club", hints: ["Stage", "Jokes", "Heckle"], tags: ["places_objects", "global", "place"] },
+  { name: "Food Court", hints: ["Tray", "Choices", "Mall"], tags: ["places_objects", "global", "place"] },
+  { name: "Mall", hints: ["Shops", "Escalator", "Crowd"], tags: ["places_objects", "global", "place"] },
+  { name: "Supermarket", hints: ["Cart", "Aisles", "Checkout"], tags: ["places_objects", "global", "place"] },
+  { name: "Farmers Market", hints: ["Stalls", "Produce", "Fresh"], tags: ["places_objects", "global", "place"] },
+  { name: "Flea Market", hints: ["Bargain", "Vintage", "Stalls"], tags: ["places_objects", "global", "place"] },
+  { name: "Amusement Park", hints: ["Rides", "Tickets", "Scream"], tags: ["places_objects", "global", "place"] },
+  { name: "Theme Park", hints: ["Mascot", "Queue", "Rollercoaster"], tags: ["places_objects", "global", "place"] },
+  { name: "Water Park", hints: ["Slides", "Splash", "Lifeguard"], tags: ["places_objects", "global", "place"] },
+  { name: "Roller Rink", hints: ["Wheels", "Music", "Circle"], tags: ["places_objects", "global", "place"] },
+  { name: "Ice Rink", hints: ["Skates", "Cold", "Glide"], tags: ["places_objects", "global", "place"] },
+  { name: "Gym", hints: ["Weights", "Sweat", "Mirror"], tags: ["places_objects", "global", "place"] },
+  { name: "Yoga Studio", hints: ["Mat", "Stretch", "Breath"], tags: ["places_objects", "global", "place"] },
+  { name: "Spa", hints: ["Steam", "Towels", "Relax"], tags: ["places_objects", "global", "place"] },
+  { name: "Salon", hints: ["Mirror", "Scissors", "Hair"], tags: ["places_objects", "global", "place"] },
+  { name: "Barbershop", hints: ["Clipper", "Fade", "Chair"], tags: ["places_objects", "global", "place"] },
+  { name: "Tattoo Studio", hints: ["Ink", "Needle", "Stencil"], tags: ["places_objects", "global", "place"] },
+  { name: "Barber College", hints: ["Fade", "Practice", "Mirror"], tags: ["places_objects", "global", "place"] },
+  { name: "Barbershop Quartet Hall", hints: ["Harmony", "Blazers", "Vintage"], tags: ["places_objects", "global", "place"] },
+  { name: "Beach", hints: ["Sand", "Waves", "Sun"], tags: ["places_objects", "global", "place"] },
+  { name: "Boardwalk", hints: ["Arcade", "Sea", "Planks"], tags: ["places_objects", "global", "place"] },
+  { name: "Promenade", hints: ["Benches", "Sea", "Walk"], tags: ["places_objects", "global", "place"] },
+  { name: "Park", hints: ["Grass", "Bench", "Picnic"], tags: ["places_objects", "global", "place"] },
+  { name: "Playground", hints: ["Slides", "Swings", "Kids"], tags: ["places_objects", "global", "place"] },
+  { name: "Dog Park", hints: ["Leash", "Fence", "Bark"], tags: ["places_objects", "global", "place"] },
+  { name: "Botanical Garden", hints: ["Flowers", "Paths", "Greenhouse"], tags: ["places_objects", "global", "place"] },
+  { name: "Rose Garden", hints: ["Petals", "Paths", "Fragrant"], tags: ["places_objects", "global", "place"] },
+  { name: "Greenhouse", hints: ["Humidity", "Plants", "Glass"], tags: ["places_objects", "global", "place"] },
+  { name: "Campground", hints: ["Tent", "Firepit", "Stars"], tags: ["places_objects", "global", "place"] },
+  { name: "Campsite", hints: ["Tent", "Lantern", "Dirt"], tags: ["places_objects", "global", "place"] },
+  { name: "Picnic Area", hints: ["Blanket", "Basket", "Shade"], tags: ["places_objects", "global", "place"] },
+  { name: "Lake", hints: ["Dock", "Still", "Paddle"], tags: ["places_objects", "global", "place"] },
+  { name: "Riverbank", hints: ["Current", "Pebbles", "Grass"], tags: ["places_objects", "global", "place"] },
+  { name: "Waterfall", hints: ["Mist", "Roar", "Cliff"], tags: ["places_objects", "global", "place"] },
+  { name: "Hot Spring", hints: ["Steam", "Mineral", "Soak"], tags: ["places_objects", "global", "place"] },
+  { name: "Pool", hints: ["Lanes", "Chlorine", "Diving"], tags: ["places_objects", "global", "place"] },
+  { name: "Waterfront", hints: ["Boats", "Breeze", "Pier"], tags: ["places_objects", "global", "place"] },
+  { name: "Marina", hints: ["Yachts", "Dock", "Ropes"], tags: ["places_objects", "global", "place"] },
+  { name: "Pier", hints: ["Boards", "Sea", "Fishing"], tags: ["places_objects", "global", "place"] },
+  { name: "Harbor", hints: ["Ships", "Crane", "Water"], tags: ["places_objects", "global", "place"] },
+  { name: "Fishing Dock", hints: ["Bait", "Planks", "Reel"], tags: ["places_objects", "global", "place"] },
+  { name: "Boat Ramp", hints: ["Trailer", "Launch", "Lake"], tags: ["places_objects", "global", "place"] },
+  { name: "Stadium", hints: ["Crowd", "Seats", "Scoreboard"], tags: ["places_objects", "global", "place"] },
+  { name: "Arena", hints: ["Lights", "Rows", "Cheer"], tags: ["places_objects", "global", "place"] },
+  { name: "Sports Bar", hints: ["Screens", "Wings", "Cheer"], tags: ["places_objects", "global", "place"] },
+  { name: "Baseball Field", hints: ["Diamond", "Dugout", "Bases"], tags: ["places_objects", "global", "place"] },
+  { name: "Soccer Field", hints: ["Grass", "Goal", "Whistle"], tags: ["places_objects", "global", "place"] },
+  { name: "Basketball Court", hints: ["Hoop", "Dribble", "Bounce"], tags: ["places_objects", "global", "place"] },
+  { name: "Tennis Court", hints: ["Net", "Lines", "Serve"], tags: ["places_objects", "global", "place"] },
+  { name: "Golf Course", hints: ["Fairway", "Cart", "Green"], tags: ["places_objects", "global", "place"] },
+  { name: "Mini Golf", hints: ["Windmill", "Putter", "Obstacle"], tags: ["places_objects", "global", "place"] },
+  { name: "Driving Range", hints: ["Buckets", "Tee", "Swing"], tags: ["places_objects", "global", "place"] },
+  { name: "Skate Park", hints: ["Ramps", "Deck", "Grind"], tags: ["places_objects", "global", "place"] },
+  { name: "Climbing Gym", hints: ["Wall", "Harness", "Grip"], tags: ["places_objects", "global", "place"] },
+  { name: "Trampoline Park", hints: ["Bounce", "Foam", "Socks"], tags: ["places_objects", "global", "place"] },
+  { name: "Laser Tag Arena", hints: ["Vest", "Fog", "Beam"], tags: ["places_objects", "global", "place"] },
+  { name: "Paintball Field", hints: ["Mask", "Splatter", "Bunker"], tags: ["places_objects", "global", "place"] },
+  { name: "Go-Kart Track", hints: ["Helmet", "Lap", "Engine"], tags: ["places_objects", "global", "place"] },
+  { name: "Race Track", hints: ["Pitlane", "Lap", "Speed"], tags: ["places_objects", "global", "place"] },
+  { name: "Bowling Pro Shop", hints: ["Ball", "Grip", "Shine"], tags: ["places_objects", "global", "place"] },
+  { name: "Airport", hints: ["Boarding", "Runway", "Passport"], tags: ["places_objects", "global", "place"] },
+  { name: "Train Station", hints: ["Platform", "Departure", "Tracks"], tags: ["places_objects", "global", "place"] },
+  { name: "Bus Station", hints: ["Tickets", "Luggage", "Route"], tags: ["places_objects", "global", "place"] },
+  { name: "Subway Station", hints: ["Turnstile", "Tunnel", "Map"], tags: ["places_objects", "global", "place"] },
+  { name: "Taxi Stand", hints: ["Meter", "Curb", "Queue"], tags: ["places_objects", "global", "place"] },
+  { name: "Gas Station", hints: ["Pump", "Nozzle", "Snack"], tags: ["places_objects", "global", "place"] },
+  { name: "Car Wash", hints: ["Foam", "Tunnel", "Shine"], tags: ["places_objects", "global", "place"] },
+  { name: "Parking Garage", hints: ["Levels", "Concrete", "Ticket"], tags: ["places_objects", "global", "place"] },
+  { name: "Key", hints: ["Metal", "Unlock", "Pocket"], tags: ["places_objects", "global", "object"] },
+  { name: "Padlock", hints: ["Shackle", "Click", "Secure"], tags: ["places_objects", "global", "object"] },
+  { name: "Door Handle", hints: ["Turn", "Metal", "Entrance"], tags: ["places_objects", "global", "object"] },
+  { name: "Flashlight", hints: ["Beam", "Battery", "Dark"], tags: ["places_objects", "global", "object"] },
+  { name: "Lantern", hints: ["Glow", "Handle", "Camp"], tags: ["places_objects", "global", "object"] },
+  { name: "Candle", hints: ["Wax", "Flame", "Melt"], tags: ["places_objects", "global", "object"] },
+  { name: "Matchbox", hints: ["Strike", "Tiny", "Flame"], tags: ["places_objects", "global", "object"] },
+  { name: "Lighter", hints: ["Flint", "Flame", "Pocket"], tags: ["places_objects", "global", "object"] },
+  { name: "Compass", hints: ["North", "Needle", "Travel"], tags: ["places_objects", "global", "object"] },
+  { name: "Map", hints: ["Fold", "Route", "Paper"], tags: ["places_objects", "global", "object"] },
+  { name: "Binoculars", hints: ["Zoom", "Strap", "Distance"], tags: ["places_objects", "global", "object"] },
+  { name: "Camera", hints: ["Lens", "Capture", "Click"], tags: ["places_objects", "global", "object"] },
+  { name: "Tripod", hints: ["Legs", "Stable", "Camera"], tags: ["places_objects", "global", "object"] },
+  { name: "Microphone", hints: ["Voice", "Stage", "Cable"], tags: ["places_objects", "global", "object"] },
+  { name: "Speaker", hints: ["Bass", "Volume", "Sound"], tags: ["places_objects", "global", "object"] },
+  { name: "Headphones", hints: ["Ears", "Music", "Cushion"], tags: ["places_objects", "global", "object"] },
+  { name: "Earbuds", hints: ["Pocket", "Wireless", "Case"], tags: ["places_objects", "global", "object"] },
+  { name: "Laptop", hints: ["Keyboard", "Screen", "Portable"], tags: ["places_objects", "global", "object"] },
+  { name: "Tablet", hints: ["Touch", "Screen", "Slim"], tags: ["places_objects", "global", "object"] },
+  { name: "Phone", hints: ["Pocket", "Apps", "Vibrate"], tags: ["places_objects", "global", "object"] },
+  { name: "Remote Control", hints: ["Buttons", "Couch", "Channel"], tags: ["places_objects", "global", "object"] },
+  { name: "Controller", hints: ["Buttons", "Joystick", "Console"], tags: ["places_objects", "global", "object"] },
+  { name: "Keyboard", hints: ["Keys", "Typing", "Desk"], tags: ["places_objects", "global", "object"] },
+  { name: "Mouse", hints: ["Cursor", "Click", "Desk"], tags: ["places_objects", "global", "object"] },
+  { name: "Watch", hints: ["Wrist", "Time", "Tick"], tags: ["places_objects", "global", "object"] },
+  { name: "Alarm Clock", hints: ["Beep", "Morning", "Numbers"], tags: ["places_objects", "global", "object"] },
+  { name: "Hourglass", hints: ["Sand", "Flip", "Time"], tags: ["places_objects", "global", "object"] },
+  { name: "Notebook", hints: ["Pages", "Spiral", "Notes"], tags: ["places_objects", "global", "object"] },
+  { name: "Journal", hints: ["Pages", "Thoughts", "Private"], tags: ["places_objects", "global", "object"] },
+  { name: "Bookmark", hints: ["Page", "Ribbon", "Novel"], tags: ["places_objects", "global", "object"] },
+  { name: "Pen", hints: ["Ink", "Click", "Pocket"], tags: ["places_objects", "global", "object"] },
+  { name: "Pencil", hints: ["Graphite", "Eraser", "Sketch"], tags: ["places_objects", "global", "object"] },
+  { name: "Marker", hints: ["Cap", "Bold", "Color"], tags: ["places_objects", "global", "object"] },
+  { name: "Paintbrush", hints: ["Bristles", "Paint", "Stroke"], tags: ["places_objects", "global", "object"] },
+  { name: "Palette", hints: ["Paint", "Thumbhole", "Mix"], tags: ["places_objects", "global", "object"] },
+  { name: "Scissors", hints: ["Blades", "Cut", "Handle"], tags: ["places_objects", "global", "object"] },
+  { name: "Knife", hints: ["Sharp", "Blade", "Slice"], tags: ["places_objects", "global", "object"] },
+  { name: "Fork", hints: ["Tines", "Dinner", "Metal"], tags: ["places_objects", "global", "object"] },
+  { name: "Spoon", hints: ["Bowl", "Soup", "Metal"], tags: ["places_objects", "global", "object"] },
+  { name: "Plate", hints: ["Round", "Meal", "Ceramic"], tags: ["places_objects", "global", "object"] },
+  { name: "Mug", hints: ["Handle", "Steam", "Sip"], tags: ["places_objects", "global", "object"] },
+  { name: "Wine Glass", hints: ["Stem", "Fragile", "Toast"], tags: ["places_objects", "global", "object"] },
+  { name: "Bottle", hints: ["Cap", "Liquid", "Portable"], tags: ["places_objects", "global", "object"] },
+  { name: "Thermos", hints: ["Insulated", "Hot", "Travel"], tags: ["places_objects", "global", "object"] },
+  { name: "Umbrella", hints: ["Rain", "Canopy", "Fold"], tags: ["places_objects", "global", "object"] },
+  { name: "Backpack", hints: ["Straps", "Zipper", "Carry"], tags: ["places_objects", "global", "object"] },
+  { name: "Suitcase", hints: ["Wheels", "Travel", "Handle"], tags: ["places_objects", "global", "object"] },
+  { name: "Wallet", hints: ["Cash", "Cards", "Pocket"], tags: ["places_objects", "global", "object"] },
+  { name: "Coin", hints: ["Round", "Metal", "Change"], tags: ["places_objects", "global", "object"] },
+  { name: "Ring", hints: ["Finger", "Shine", "Circle"], tags: ["places_objects", "global", "object"] },
+  { name: "Necklace", hints: ["Chain", "Pendant", "Neck"], tags: ["places_objects", "global", "object"] },
+  { name: "Bracelet", hints: ["Wrist", "Clasp", "Jewelry"], tags: ["places_objects", "global", "object"] },
+  { name: "Sunglasses", hints: ["Tinted", "Summer", "Eyes"], tags: ["places_objects", "global", "object"] },
+  { name: "Glasses", hints: ["Frames", "Lenses", "Face"], tags: ["places_objects", "global", "object"] },
+  { name: "Hat", hints: ["Brim", "Head", "Shade"], tags: ["places_objects", "global", "object"] },
+  { name: "Scarf", hints: ["Neck", "Warm", "Wrap"], tags: ["places_objects", "global", "object"] },
+  { name: "Gloves", hints: ["Hands", "Warm", "Pairs"], tags: ["places_objects", "global", "object"] },
+  { name: "Boots", hints: ["Laces", "Heavy", "Mud"], tags: ["places_objects", "global", "object"] },
+  { name: "Sneakers", hints: ["Laces", "Rubber", "Run"], tags: ["places_objects", "global", "object"] },
+  { name: "Helmet", hints: ["Head", "Protect", "Strap"], tags: ["places_objects", "global", "object"] },
+  { name: "Mask", hints: ["Cover", "Face", "Elastic"], tags: ["places_objects", "global", "object"] },
+  { name: "Hammer", hints: ["Nail", "Swing", "Tool"], tags: ["places_objects", "global", "object"] },
+  { name: "Saw", hints: ["Teeth", "Cut", "Workshop"], tags: ["places_objects", "global", "object"] },
+  { name: "Wrench", hints: ["Bolt", "Grip", "Tool"], tags: ["places_objects", "global", "object"] },
+  { name: "Screwdriver", hints: ["Twist", "Screw", "Tool"], tags: ["places_objects", "global", "object"] },
+  { name: "Drill", hints: ["Bit", "Power", "Hole"], tags: ["places_objects", "global", "object"] },
+  { name: "Pliers", hints: ["Grip", "Pinch", "Tool"], tags: ["places_objects", "global", "object"] },
+  { name: "Tape Measure", hints: ["Retract", "Length", "Tool"], tags: ["places_objects", "global", "object"] },
+  { name: "Level", hints: ["Bubble", "Straight", "Tool"], tags: ["places_objects", "global", "object"] },
+  { name: "Ladder", hints: ["Rungs", "Climb", "Tall"], tags: ["places_objects", "global", "object"] },
+  { name: "Rope", hints: ["Knot", "Coil", "Pull"], tags: ["places_objects", "global", "object"] },
+  { name: "Chain", hints: ["Links", "Metal", "Heavy"], tags: ["places_objects", "global", "object"] },
+  { name: "Bucket", hints: ["Handle", "Carry", "Pail"], tags: ["places_objects", "global", "object"] },
+  { name: "Shovel", hints: ["Dig", "Handle", "Dirt"], tags: ["places_objects", "global", "object"] },
+  { name: "Rake", hints: ["Yard", "Teeth", "Leaves"], tags: ["places_objects", "global", "object"] },
+  { name: "Broom", hints: ["Sweep", "Bristles", "Dust"], tags: ["places_objects", "global", "object"] },
+  { name: "Mop", hints: ["Wet", "Floor", "Clean"], tags: ["places_objects", "global", "object"] },
+  { name: "Vacuum", hints: ["Cord", "Suction", "Clean"], tags: ["places_objects", "global", "object"] },
+  { name: "Detergent Bottle", hints: ["Soap", "Laundry", "Cap"], tags: ["places_objects", "global", "object"] },
+  { name: "Soap Bar", hints: ["Foam", "Smooth", "Clean"], tags: ["places_objects", "global", "object"] },
+  { name: "Towel", hints: ["Dry", "Cotton", "Bathroom"], tags: ["places_objects", "global", "object"] },
+  { name: "Pillow", hints: ["Soft", "Sleep", "Bed"], tags: ["places_objects", "global", "object"] },
+  { name: "Blanket", hints: ["Warm", "Fold", "Cozy"], tags: ["places_objects", "global", "object"] },
+  { name: "Mattress", hints: ["Bed", "Spring", "Sleep"], tags: ["places_objects", "global", "object"] },
+  { name: "Chair", hints: ["Seat", "Legs", "Sit"], tags: ["places_objects", "global", "object"] },
+  { name: "Stool", hints: ["Seat", "NoBack", "Round"], tags: ["places_objects", "global", "object"] },
+  { name: "Bench", hints: ["Long", "Sit", "Park"], tags: ["places_objects", "global", "object"] },
+  { name: "Table", hints: ["Flat", "Legs", "Surface"], tags: ["places_objects", "global", "object"] },
+  { name: "Mirror", hints: ["Reflection", "Glass", "Wall"], tags: ["places_objects", "global", "object"] },
+  { name: "Frame", hints: ["Photo", "Border", "Wall"], tags: ["places_objects", "global", "object"] },
+];
+
+const THEME_OPTIONS = [
+  { value: "characters", label: "Characters" },
+  { value: "places_objects", label: "Places & Objects" },
+];
+
+const CHARACTER_POOL_OPTIONS = [
   { value: "all", label: "All" },
   { value: "global", label: "Global" },
   { value: "israel", label: "Israel" },
+];
+
+const PLACES_OBJECTS_POOL_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "place", label: "Places" },
+  { value: "object", label: "Objects" },
 ];
 
 const DIFFICULTY_OPTIONS = [
@@ -351,19 +545,32 @@ function shuffle(array) {
   return copy;
 }
 
-function filterCharacters(pool) {
-  if (pool === "all") return CHARACTER_BANK;
-  return CHARACTER_BANK.filter((item) => item.tags.includes(pool));
+function getActiveBank(theme) {
+  if (theme === "places_objects") return PLACES_OBJECTS_BANK;
+  return CHARACTER_BANK;
 }
 
-function getRoomKey(roomName) {
+function filterItems(theme, pool) {
+  const bank = getActiveBank(theme);
+  if (pool === "all") return bank;
+  return bank.filter((item) => item.tags.includes(pool));
+}
+
+function getPoolKey(theme = "characters", pool = "all") {
+  if (theme === "characters") return pool;
+  if (theme === "places_objects") return pool;
+  return "all";
+}
+
+function getRoomKey(roomName, theme = "characters", pool = "all") {
   const normalized = roomName.trim().toLowerCase().replace(/\s+/g, "-");
-  return normalized ? `impostor-room-${normalized}` : "";
+  const poolKey = getPoolKey(theme, pool);
+  return normalized ? `impostor-room-${theme}-${poolKey}-${normalized}` : "";
 }
 
-function loadRoomHistory(roomName) {
+function loadRoomHistory(roomName, theme = "characters", pool = "all") {
   if (typeof window === "undefined") return [];
-  const key = getRoomKey(roomName);
+  const key = getRoomKey(roomName, theme, pool);
   if (!key) return [];
 
   try {
@@ -375,16 +582,16 @@ function loadRoomHistory(roomName) {
   }
 }
 
-function saveRoomHistory(roomName, usedCharacters) {
+function saveRoomHistory(roomName, theme = "characters", pool = "all", usedCharacters) {
   if (typeof window === "undefined") return;
-  const key = getRoomKey(roomName);
+  const key = getRoomKey(roomName, theme, pool);
   if (!key) return;
   window.localStorage.setItem(key, JSON.stringify(usedCharacters));
 }
 
-function clearRoomHistory(roomName) {
+function clearRoomHistory(roomName, theme = "characters", pool = "all") {
   if (typeof window === "undefined") return;
-  const key = getRoomKey(roomName);
+  const key = getRoomKey(roomName, theme, pool);
   if (!key) return;
   window.localStorage.removeItem(key);
 }
@@ -397,28 +604,113 @@ function getHintByDifficulty(hints, difficulty) {
   return hints[2] ?? hints[1] ?? hints[0] ?? "";
 }
 
-function buildRound(players, settings, usedCharacters) {
-  const pool = filterCharacters(settings.pool);
+
+function createImpostorCountMap(players, existingCounts = {}) {
+  const next = {};
+  players.forEach((player) => {
+    next[player] = existingCounts[player] ?? 0;
+  });
+  return next;
+}
+
+function getRecencyPenalty(gap, playerCount) {
+  if (gap < 0) return 1;
+
+  if (playerCount <= 4) {
+    if (gap === 0) return 0.25;
+    if (gap === 1) return 0.55;
+    if (gap === 2) return 0.8;
+    return 1;
+  }
+
+  if (playerCount <= 7) {
+    if (gap === 0) return 0.35;
+    if (gap === 1) return 0.6;
+    if (gap === 2) return 0.8;
+    return 1;
+  }
+
+  if (gap === 0) return 0.45;
+  if (gap === 1) return 0.7;
+  if (gap === 2) return 0.85;
+  return 1;
+}
+
+function pickWeightedPlayer(weightedPlayers) {
+  const totalWeight = weightedPlayers.reduce((sum, item) => sum + item.weight, 0);
+  if (totalWeight <= 0) {
+    return pickRandom(weightedPlayers).player;
+  }
+
+  let threshold = Math.random() * totalWeight;
+  for (const item of weightedPlayers) {
+    threshold -= item.weight;
+    if (threshold <= 0) return item.player;
+  }
+
+  return weightedPlayers[weightedPlayers.length - 1].player;
+}
+
+function pickBalancedImpostor(players, counts = {}, history = []) {
+  if (!Array.isArray(players) || players.length === 0) return null;
+
+  const normalizedCounts = createImpostorCountMap(players, counts);
+  const minCount = Math.min(...players.map((player) => normalizedCounts[player] ?? 0));
+
+  const weightedPlayers = players.map((player) => {
+    const playerCount = normalizedCounts[player] ?? 0;
+    const countWeight = Math.pow(0.65, playerCount - minCount);
+    const historyIndex = history.indexOf(player);
+    const recencyWeight = getRecencyPenalty(historyIndex, players.length);
+
+    return {
+      player,
+      weight: countWeight * recencyWeight,
+    };
+  });
+
+  return pickWeightedPlayer(weightedPlayers);
+}
+
+
+function buildRound(players, settings, usedCharacters, impostorMeta = {}, useBalancedImpostor = false) {
+  const pool = filterItems(settings.theme, settings.pool);
   const usedSet = new Set(usedCharacters);
   const freshPool = pool.filter((item) => !usedSet.has(item.name));
   const selectionPool = freshPool.length > 0 ? freshPool : pool;
   const selectedCharacter = pickRandom(selectionPool);
   const selectedHint = getHintByDifficulty(selectedCharacter.hints, settings.difficulty);
-  const impostorIndex = Math.floor(Math.random() * players.length);
+
+  const nextImpostorPlayer = useBalancedImpostor
+    ? pickBalancedImpostor(players, impostorMeta.counts ?? {}, impostorMeta.history ?? [])
+    : pickRandom(players);
 
   const assignments = shuffle(
-    players.map((player, index) => ({
+    players.map((player) => ({
       player,
-      isImpostor: index === impostorIndex,
-      word: index === impostorIndex ? "Impostor" : selectedCharacter.name,
+      isImpostor: player === nextImpostorPlayer,
+      word: player === nextImpostorPlayer ? "Impostor" : selectedCharacter.name,
       hint: selectedHint,
     }))
   );
+
+  const nextImpostorCounts = createImpostorCountMap(players, impostorMeta.counts ?? {});
+  if (nextImpostorPlayer) {
+    nextImpostorCounts[nextImpostorPlayer] = (nextImpostorCounts[nextImpostorPlayer] ?? 0) + 1;
+  }
+
+  const historyLimit = Math.max(6, players.length * 2);
+  const nextImpostorHistory = nextImpostorPlayer
+    ? [nextImpostorPlayer, ...(impostorMeta.history ?? [])].slice(0, historyLimit)
+    : [...(impostorMeta.history ?? [])].slice(0, historyLimit);
 
   return {
     character: selectedCharacter,
     selectedHint,
     assignments,
+    impostorPlayer: nextImpostorPlayer,
+    nextImpostorCounts,
+    nextImpostorHistory,
   };
 }
 
@@ -476,6 +768,7 @@ export default function App() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [editingValue, setEditingValue] = useState("");
   const [settings, setSettings] = useState({
+    theme: "characters",
     pool: "all",
     difficulty: "medium",
     impostorGetsHint: true,
@@ -487,6 +780,9 @@ export default function App() {
   const [showFinalRevealScreen, setShowFinalRevealScreen] = useState(false);
   const [showFinalResults, setShowFinalResults] = useState(false);
   const [competitionMode, setCompetitionMode] = useState(false);
+  const [balancedImpostorMode, setBalancedImpostorMode] = useState(false);
+  const [impostorCounts, setImpostorCounts] = useState(() => createImpostorCountMap(["Alon", "Dana", "Yossi", "Maya"]));
+  const [impostorHistory, setImpostorHistory] = useState([]);
   const [scores, setScores] = useState(() => createScoreMap(["Alon", "Dana", "Yossi", "Maya"]));
   const [roundScored, setRoundScored] = useState(false);
   const [windowWidth, setWindowWidth] = useState(
@@ -496,7 +792,21 @@ export default function App() {
   const isMobile = windowWidth < 768;
   const currentAssignment = round?.assignments?.[currentIndex] ?? null;
   const canStart = players.length >= 3;
-  const roomPoolCount = useMemo(() => filterCharacters(settings.pool).length, [settings.pool]);
+  const roomPoolCount = useMemo(
+    () => filterItems(settings.theme, settings.pool).length,
+    [settings.theme, settings.pool]
+  );
+  const themeLabel = settings.theme === "places_objects" ? "Places & Objects" : "Characters";
+  const activePoolLabel =
+    settings.theme === "characters"
+      ? CHARACTER_POOL_OPTIONS.find((option) => option.value === settings.pool)?.label ?? "All"
+      : PLACES_OBJECTS_POOL_OPTIONS.find((option) => option.value === settings.pool)?.label ?? "All";
+  const pageTitle = settings.theme === "places_objects" ? "Impostor: Places & Objects" : "Impostor: Famous People";
+  const pageSubtitle =
+    settings.theme === "places_objects"
+      ? "One-word English hints, a clean theme selector, separate pools for places or objects, and room memory per pool."
+      : "One-word English hints, adjustable difficulty, editable player names, room memory, and optional competition mode.";
+
 
   const sortedScores = useMemo(() => {
     return Object.entries(scores).sort((a, b) => {
@@ -506,12 +816,26 @@ export default function App() {
   }, [scores]);
 
   useEffect(() => {
-    setUsedCharacters(loadRoomHistory(roomName));
-  }, [roomName]);
+    setUsedCharacters(loadRoomHistory(roomName, settings.theme, settings.pool));
+  }, [roomName, settings.theme, settings.pool]);
 
   useEffect(() => {
     setScores((prev) => createScoreMap(players, prev));
   }, [players]);
+
+  useEffect(() => {
+    setImpostorCounts((prev) => createImpostorCountMap(players, prev));
+    setImpostorHistory((prev) => prev.filter((player) => players.includes(player)));
+  }, [players]);
+
+  useEffect(() => {
+    setRound(null);
+    setCurrentIndex(0);
+    setRevealed(false);
+    setShowFinalRevealScreen(false);
+    setShowFinalResults(false);
+    setRoundScored(false);
+  }, [settings.theme]);
 
   useEffect(() => {
     function handleResize() {
@@ -580,18 +904,26 @@ export default function App() {
     if (!canStart) return;
     if (competitionMode && showFinalResults && !roundScored) return;
 
-    const nextRound = buildRound(players, settings, usedCharacters);
+    const nextRound = buildRound(
+      players,
+      settings,
+      usedCharacters,
+      { counts: impostorCounts, history: impostorHistory },
+      balancedImpostorMode
+    );
     setRound(nextRound);
     setCurrentIndex(0);
     setRevealed(false);
     setShowFinalRevealScreen(false);
     setShowFinalResults(false);
     setRoundScored(false);
+    setImpostorCounts(nextRound.nextImpostorCounts);
+    setImpostorHistory(nextRound.nextImpostorHistory);
 
     const nextUsed = [...usedCharacters, nextRound.character.name];
     setUsedCharacters(nextUsed);
     if (roomName.trim()) {
-      saveRoomHistory(roomName, nextUsed);
+      saveRoomHistory(roomName, settings.theme, settings.pool, nextUsed);
     }
   }
 
@@ -599,18 +931,26 @@ export default function App() {
     if (!canStart) return;
     if (!round) return;
 
-    const nextRound = buildRound(players, settings, usedCharacters);
+    const nextRound = buildRound(
+      players,
+      settings,
+      usedCharacters,
+      { counts: impostorCounts, history: impostorHistory },
+      balancedImpostorMode
+    );
     setRound(nextRound);
     setCurrentIndex(0);
     setRevealed(false);
     setShowFinalRevealScreen(false);
     setShowFinalResults(false);
     setRoundScored(false);
+    setImpostorCounts(nextRound.nextImpostorCounts);
+    setImpostorHistory(nextRound.nextImpostorHistory);
 
     const nextUsed = [...usedCharacters, nextRound.character.name];
     setUsedCharacters(nextUsed);
     if (roomName.trim()) {
-      saveRoomHistory(roomName, nextUsed);
+      saveRoomHistory(roomName, settings.theme, settings.pool, nextUsed);
     }
   }
 
@@ -627,22 +967,18 @@ export default function App() {
     setRevealed(false);
   }
 
-  function resetRound() {
-    setRound(null);
-    setCurrentIndex(0);
-    setRevealed(false);
-    setShowFinalRevealScreen(false);
-    setShowFinalResults(false);
-    setRoundScored(false);
-  }
 
   function resetRoomMemory() {
     setUsedCharacters([]);
-    clearRoomHistory(roomName);
+    setImpostorCounts(createImpostorCountMap(players));
+    setImpostorHistory([]);
+    clearRoomHistory(roomName, settings.theme, settings.pool);
   }
 
   function resetScores() {
     setScores(createScoreMap(players));
+    setImpostorCounts(createImpostorCountMap(players));
+    setImpostorHistory([]);
     setRoundScored(false);
   }
 
@@ -662,6 +998,10 @@ export default function App() {
       }
       return nextMode;
     });
+  }
+
+  function toggleBalancedImpostorMode() {
+    setBalancedImpostorMode((prev) => !prev);
   }
 
   function awardImpostorWin() {
@@ -741,7 +1081,7 @@ export default function App() {
               textAlign: "center",
             }}
           >
-            Impostor: Famous People
+            {pageTitle}
           </div>
 
           <div
@@ -753,7 +1093,7 @@ export default function App() {
               textAlign: "center",
             }}
           >
-            One-word English hints, adjustable difficulty, editable player names, room memory, and optional competition mode.
+            {pageSubtitle}
           </div>
 
           <div style={{ display: "grid", gap: 16, marginBottom: 26 }}>
@@ -775,19 +1115,61 @@ export default function App() {
             </label>
 
             <div style={{ display: "grid", gap: 10 }}>
-              <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Character pool</span>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-                {POOL_OPTIONS.map((option) => (
-                  <PillButton
-                    key={option.value}
-                    active={settings.pool === option.value}
-                    onClick={() => setSettings((prev) => ({ ...prev, pool: option.value }))}
-                  >
+              <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Game theme</span>
+              <select
+                value={settings.theme}
+                onChange={(e) => setSettings((prev) => ({ ...prev, theme: e.target.value }))}
+                style={{
+                  padding: 14,
+                  borderRadius: 18,
+                  border: "1px solid rgba(99, 102, 241, 0.18)",
+                  background: "rgba(255,255,255,0.82)",
+                  fontSize: 16,
+                  outline: "none",
+                  color: "#172554",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                {THEME_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
                     {option.label}
-                  </PillButton>
+                  </option>
                 ))}
-              </div>
+              </select>
             </div>
+
+            {settings.theme === "characters" ? (
+              <div style={{ display: "grid", gap: 10 }}>
+                <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Character pool</span>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+                  {CHARACTER_POOL_OPTIONS.map((option) => (
+                    <PillButton
+                      key={option.value}
+                      active={settings.pool === option.value}
+                      onClick={() => setSettings((prev) => ({ ...prev, pool: option.value }))}
+                    >
+                      {option.label}
+                    </PillButton>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 10 }}>
+                <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Places & Objects pool</span>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+                  {PLACES_OBJECTS_POOL_OPTIONS.map((option) => (
+                    <PillButton
+                      key={option.value}
+                      active={settings.pool === option.value}
+                      onClick={() => setSettings((prev) => ({ ...prev, pool: option.value }))}
+                    >
+                      {option.label}
+                    </PillButton>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div style={{ display: "grid", gap: 10 }}>
               <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Hint difficulty</span>
@@ -819,6 +1201,28 @@ export default function App() {
                 <PillButton active={competitionMode} onClick={toggleCompetitionMode}>
                   {competitionMode ? "Competition ON" : "Competition OFF"}
                 </PillButton>
+
+                <button
+                  onClick={toggleBalancedImpostorMode}
+                  style={{
+                    padding: "11px 14px",
+                    borderRadius: 999,
+                    border: balancedImpostorMode
+                      ? "1px solid transparent"
+                      : "1px solid rgba(116, 125, 155, 0.28)",
+                    background: balancedImpostorMode
+                      ? "linear-gradient(135deg, #0f766e 0%, #0ea5e9 100%)"
+                      : "rgba(255,255,255,0.72)",
+                    color: balancedImpostorMode ? "white" : "#172554",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    boxShadow: balancedImpostorMode ? "0 10px 22px rgba(14, 165, 233, 0.22)" : "none",
+                    whiteSpace: "nowrap",
+                  }}
+                  title="Reduce repeat impostors without removing randomness"
+                >
+                  {balancedImpostorMode ? "Balanced impostor" : "Impostor random"}
+                </button>
 
                 {competitionMode && (
                   <button
@@ -979,8 +1383,8 @@ export default function App() {
               marginBottom: 26,
             }}
           >
-            <MetricCard label="Characters in pool" value={roomPoolCount} accent="#4f46e5" isMobile={isMobile} />
-            <MetricCard label="Used in this room" value={usedCharacters.length} accent="#7c3aed" isMobile={isMobile} />
+            <MetricCard label="Items in pool" value={roomPoolCount} accent="#4f46e5" isMobile={isMobile} />
+            <MetricCard label="Used in this pool" value={usedCharacters.length} accent="#7c3aed" isMobile={isMobile} />
             <MetricCard
               label="Hint style"
               value={settings.difficulty === "none" ? "No hint" : settings.difficulty.charAt(0).toUpperCase() + settings.difficulty.slice(1)}
@@ -1036,7 +1440,7 @@ export default function App() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: isMobile ? "1fr" : "repeat(4, minmax(0, 1fr))",
+              gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
               gap: 12,
             }}
           >
@@ -1081,22 +1485,6 @@ export default function App() {
               }}
             >
               Skip round
-            </button>
-
-            <button
-              onClick={resetRound}
-              style={{
-                padding: "14px 22px",
-                borderRadius: 18,
-                border: 0,
-                background: "linear-gradient(135deg, #fb7185 0%, #f97316 100%)",
-                color: "white",
-                cursor: "pointer",
-                fontWeight: 800,
-                boxShadow: "0 12px 24px rgba(249, 115, 22, 0.22)",
-              }}
-            >
-              Reset round
             </button>
 
             <button
@@ -1272,24 +1660,10 @@ export default function App() {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr",
+                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
                   gap: 12,
                 }}
               >
-                <button
-                  onClick={resetRound}
-                  style={{
-                    padding: "14px 18px",
-                    borderRadius: 18,
-                    border: "1px solid rgba(99, 102, 241, 0.14)",
-                    background: "rgba(255,255,255,0.82)",
-                    cursor: "pointer",
-                    fontWeight: 800,
-                    color: "#172554",
-                  }}
-                >
-                  End round
-                </button>
 
                 <button
                   onClick={skipRound}
@@ -1357,7 +1731,7 @@ export default function App() {
                 Final round details
               </div>
 
-              <div style={{ marginTop: 10 }}>Word: {round.character.name}</div>
+              <div style={{ marginTop: 10 }}>Answer: {round.character.name}</div>
               <div>Hint: {round.selectedHint || "No hint"}</div>
               <div>Impostor: {impostorPlayer}</div>
 
