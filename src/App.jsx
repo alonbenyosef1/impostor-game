@@ -532,6 +532,8 @@ const NO_SELECTION_STYLE = {
   WebkitTapHighlightColor: "transparent",
 };
 
+const CREWMATES_WINNER_KEY = "__CREWMATES__";
+
 function pickRandom(array) {
   return array[Math.floor(Math.random() * array.length)];
 }
@@ -651,13 +653,11 @@ function pickWeightedPlayer(weightedPlayers) {
   return weightedPlayers[weightedPlayers.length - 1].player;
 }
 
-function pickBalancedImpostor(players, counts = {}, history = []) {
-  if (!Array.isArray(players) || players.length === 0) return null;
-
+function buildWeightedImpostorOptions(players, counts = {}, history = []) {
   const normalizedCounts = createImpostorCountMap(players, counts);
   const minCount = Math.min(...players.map((player) => normalizedCounts[player] ?? 0));
 
-  const weightedPlayers = players.map((player) => {
+  return players.map((player) => {
     const playerCount = normalizedCounts[player] ?? 0;
     const countWeight = Math.pow(0.65, playerCount - minCount);
     const historyIndex = history.indexOf(player);
@@ -668,12 +668,33 @@ function pickBalancedImpostor(players, counts = {}, history = []) {
       weight: countWeight * recencyWeight,
     };
   });
+}
 
-  return pickWeightedPlayer(weightedPlayers);
+function pickBalancedImpostors(players, requestedCount = 1, counts = {}, history = []) {
+  if (!Array.isArray(players) || players.length === 0) return [];
+
+  const maxCount = Math.max(1, Math.min(requestedCount, players.length - 1, 3));
+  const selected = [];
+  let candidates = [...players];
+
+  while (selected.length < maxCount && candidates.length > 0) {
+    const weightedPlayers = buildWeightedImpostorOptions(candidates, counts, history);
+    const picked = pickWeightedPlayer(weightedPlayers);
+    selected.push(picked);
+    candidates = candidates.filter((player) => player !== picked);
+  }
+
+  return selected;
+}
+
+function pickRandomImpostors(players, requestedCount = 1) {
+  if (!Array.isArray(players) || players.length === 0) return [];
+  const maxCount = Math.max(1, Math.min(requestedCount, players.length - 1, 3));
+  return shuffle(players).slice(0, maxCount);
 }
 
 
-function buildRound(players, settings, usedCharacters, impostorMeta = {}, useBalancedImpostor = false) {
+function buildRound(players, settings, usedCharacters, impostorMeta = {}, useBalancedImpostor = false, requestedImpostorCount = 1) {
   const pool = filterItems(settings.theme, settings.pool);
   const usedSet = new Set(usedCharacters);
   const freshPool = pool.filter((item) => !usedSet.has(item.name));
@@ -681,34 +702,34 @@ function buildRound(players, settings, usedCharacters, impostorMeta = {}, useBal
   const selectedCharacter = pickRandom(selectionPool);
   const selectedHint = getHintByDifficulty(selectedCharacter.hints, settings.difficulty);
 
-  const nextImpostorPlayer = useBalancedImpostor
-    ? pickBalancedImpostor(players, impostorMeta.counts ?? {}, impostorMeta.history ?? [])
-    : pickRandom(players);
+  const nextImpostorPlayers = useBalancedImpostor
+    ? pickBalancedImpostors(players, requestedImpostorCount, impostorMeta.counts ?? {}, impostorMeta.history ?? [])
+    : pickRandomImpostors(players, requestedImpostorCount);
+  const impostorSet = new Set(nextImpostorPlayers);
 
   const assignments = shuffle(
     players.map((player) => ({
       player,
-      isImpostor: player === nextImpostorPlayer,
-      word: player === nextImpostorPlayer ? "Impostor" : selectedCharacter.name,
+      isImpostor: impostorSet.has(player),
+      word: impostorSet.has(player) ? "Impostor" : selectedCharacter.name,
       hint: selectedHint,
     }))
   );
 
   const nextImpostorCounts = createImpostorCountMap(players, impostorMeta.counts ?? {});
-  if (nextImpostorPlayer) {
-    nextImpostorCounts[nextImpostorPlayer] = (nextImpostorCounts[nextImpostorPlayer] ?? 0) + 1;
-  }
+  nextImpostorPlayers.forEach((player) => {
+    nextImpostorCounts[player] = (nextImpostorCounts[player] ?? 0) + 1;
+  });
 
   const historyLimit = Math.max(6, players.length * 2);
-  const nextImpostorHistory = nextImpostorPlayer
-    ? [nextImpostorPlayer, ...(impostorMeta.history ?? [])].slice(0, historyLimit)
-    : [...(impostorMeta.history ?? [])].slice(0, historyLimit);
+  const nextImpostorHistory = [...nextImpostorPlayers, ...(impostorMeta.history ?? [])].slice(0, historyLimit);
 
   return {
     character: selectedCharacter,
     selectedHint,
     assignments,
-    impostorPlayer: nextImpostorPlayer,
+    impostorPlayers: nextImpostorPlayers,
+    impostorPlayer: nextImpostorPlayers[0] ?? null,
     nextImpostorCounts,
     nextImpostorHistory,
   };
@@ -780,11 +801,13 @@ export default function App() {
   const [showFinalRevealScreen, setShowFinalRevealScreen] = useState(false);
   const [showFinalResults, setShowFinalResults] = useState(false);
   const [competitionMode, setCompetitionMode] = useState(false);
+  const [impostorCount, setImpostorCount] = useState(1);
   const [balancedImpostorMode, setBalancedImpostorMode] = useState(false);
   const [impostorCounts, setImpostorCounts] = useState(() => createImpostorCountMap(["Alon", "Dana", "Yossi", "Maya"]));
   const [impostorHistory, setImpostorHistory] = useState([]);
   const [scores, setScores] = useState(() => createScoreMap(["Alon", "Dana", "Yossi", "Maya"]));
   const [roundScored, setRoundScored] = useState(false);
+  const [winnerSelection, setWinnerSelection] = useState([]);
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : 1200
   );
@@ -792,6 +815,7 @@ export default function App() {
   const isMobile = windowWidth < 768;
   const currentAssignment = round?.assignments?.[currentIndex] ?? null;
   const canStart = players.length >= 3;
+  const maxImpostorCount = Math.max(1, Math.min(3, players.length - 1));
   const roomPoolCount = useMemo(
     () => filterItems(settings.theme, settings.pool).length,
     [settings.theme, settings.pool]
@@ -826,6 +850,8 @@ export default function App() {
   useEffect(() => {
     setImpostorCounts((prev) => createImpostorCountMap(players, prev));
     setImpostorHistory((prev) => prev.filter((player) => players.includes(player)));
+    setImpostorCount((prev) => Math.max(1, Math.min(prev, Math.max(1, Math.min(3, players.length - 1)))));
+    setWinnerSelection((prev) => prev.filter((player) => players.includes(player)));
   }, [players]);
 
   useEffect(() => {
@@ -835,6 +861,7 @@ export default function App() {
     setShowFinalRevealScreen(false);
     setShowFinalResults(false);
     setRoundScored(false);
+    setWinnerSelection([]);
   }, [settings.theme]);
 
   useEffect(() => {
@@ -909,7 +936,8 @@ export default function App() {
       settings,
       usedCharacters,
       { counts: impostorCounts, history: impostorHistory },
-      balancedImpostorMode
+      balancedImpostorMode,
+      impostorCount
     );
     setRound(nextRound);
     setCurrentIndex(0);
@@ -917,6 +945,7 @@ export default function App() {
     setShowFinalRevealScreen(false);
     setShowFinalResults(false);
     setRoundScored(false);
+    setWinnerSelection([]);
     setImpostorCounts(nextRound.nextImpostorCounts);
     setImpostorHistory(nextRound.nextImpostorHistory);
 
@@ -936,7 +965,8 @@ export default function App() {
       settings,
       usedCharacters,
       { counts: impostorCounts, history: impostorHistory },
-      balancedImpostorMode
+      balancedImpostorMode,
+      impostorCount
     );
     setRound(nextRound);
     setCurrentIndex(0);
@@ -944,6 +974,7 @@ export default function App() {
     setShowFinalRevealScreen(false);
     setShowFinalResults(false);
     setRoundScored(false);
+    setWinnerSelection([]);
     setImpostorCounts(nextRound.nextImpostorCounts);
     setImpostorHistory(nextRound.nextImpostorHistory);
 
@@ -980,6 +1011,7 @@ export default function App() {
     setImpostorCounts(createImpostorCountMap(players));
     setImpostorHistory([]);
     setRoundScored(false);
+    setWinnerSelection([]);
   }
 
   function beginHold() {
@@ -1004,29 +1036,37 @@ export default function App() {
     setBalancedImpostorMode((prev) => !prev);
   }
 
-  function awardImpostorWin() {
-    if (!round || roundScored) return;
-    const impostorPlayer = round.assignments.find((assignment) => assignment.isImpostor)?.player;
-    if (!impostorPlayer) return;
-
-    setScores((prev) => ({
-      ...prev,
-      [impostorPlayer]: (prev[impostorPlayer] ?? 0) + 3,
-    }));
-    setRoundScored(true);
+  function toggleWinnerSelection(player) {
+    if (roundScored) return;
+    setWinnerSelection((prev) => {
+      const withoutCrewmates = prev.filter((name) => name !== CREWMATES_WINNER_KEY);
+      return withoutCrewmates.includes(player)
+        ? withoutCrewmates.filter((name) => name !== player)
+        : [...withoutCrewmates, player];
+    });
   }
 
-  function awardCrewWin() {
-    if (!round || roundScored) return;
-    const impostorPlayer = round.assignments.find((assignment) => assignment.isImpostor)?.player;
-    if (!impostorPlayer) return;
+  function toggleCrewmatesWinner() {
+    if (roundScored) return;
+    setWinnerSelection((prev) => (prev.includes(CREWMATES_WINNER_KEY) ? [] : [CREWMATES_WINNER_KEY]));
+  }
+
+  function saveRoundScore() {
+    if (!round || roundScored || winnerSelection.length === 0) return;
+    const impostorSet = new Set(round.impostorPlayers ?? []);
+    const impostorWinPoints = (round.impostorPlayers?.length ?? 1) === 1 ? 3 : 2;
+    const crewmatesWin = winnerSelection.includes(CREWMATES_WINNER_KEY);
+    const winnersToScore = crewmatesWin
+      ? players.filter((player) => !impostorSet.has(player))
+      : winnerSelection.filter((player) => impostorSet.has(player));
+
+    if (winnersToScore.length === 0) return;
 
     setScores((prev) => {
       const next = { ...prev };
-      players.forEach((player) => {
-        if (player !== impostorPlayer) {
-          next[player] = (next[player] ?? 0) + 1;
-        }
+      winnersToScore.forEach((player) => {
+        const pointsToAdd = impostorSet.has(player) ? impostorWinPoints : 1;
+        next[player] = (next[player] ?? 0) + pointsToAdd;
       });
       return next;
     });
@@ -1039,7 +1079,9 @@ export default function App() {
       ? PLAYER_CARD_COLORS[currentIndex % PLAYER_CARD_COLORS.length]
       : PLAYER_CARD_COLORS[0];
 
-  const impostorPlayer = round?.assignments?.find((assignment) => assignment.isImpostor)?.player ?? null;
+  const impostorPlayers = round?.impostorPlayers ?? [];
+  const impostorPlayerText = impostorPlayers.length > 0 ? impostorPlayers.join(", ") : "None";
+  const impostorWinPoints = impostorPlayers.length === 1 ? 3 : 2;
 
   return (
     <div
@@ -1190,6 +1232,30 @@ export default function App() {
                 {DIFFICULTY_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: "grid", gap: 10 }}>
+              <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Impostors</span>
+              <select
+                value={impostorCount}
+                onChange={(e) => setImpostorCount(Number(e.target.value))}
+                style={{
+                  padding: 14,
+                  borderRadius: 18,
+                  border: "1px solid rgba(99, 102, 241, 0.18)",
+                  background: "rgba(255,255,255,0.82)",
+                  fontSize: 16,
+                  outline: "none",
+                  color: "#172554",
+                  fontWeight: 700,
+                }}
+              >
+                {Array.from({ length: maxImpostorCount }, (_, index) => index + 1).map((count) => (
+                  <option key={count} value={count}>
+                    {count} {count === 1 ? "impostor" : "impostors"}
                   </option>
                 ))}
               </select>
@@ -1733,7 +1799,7 @@ export default function App() {
 
               <div style={{ marginTop: 10 }}>Answer: {round.character.name}</div>
               <div>Hint: {round.selectedHint || "No hint"}</div>
-              <div>Impostor: {impostorPlayer}</div>
+              <div>Impostors: {impostorPlayerText}</div>
 
               {competitionMode && (
                 <div
@@ -1746,45 +1812,77 @@ export default function App() {
                   }}
                 >
                   <div style={{ fontSize: 18, fontWeight: 800, color: "#172554", marginBottom: 12 }}>
-                    Choose the winner
+                    Choose the winner(s)
                   </div>
 
                   {!roundScored ? (
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                        gap: 12,
-                      }}
-                    >
-                      <button
-                        onClick={awardImpostorWin}
+                    <div style={{ display: "grid", gap: 12 }}>
+                      <div
                         style={{
-                          padding: "12px 18px",
-                          borderRadius: 14,
-                          border: 0,
-                          background: "linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%)",
-                          color: "white",
-                          fontWeight: 800,
-                          cursor: "pointer",
+                          display: "grid",
+                          gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))",
+                          gap: 10,
                         }}
                       >
-                        Impostor won (+3)
+                        {impostorPlayers.map((player) => {
+                          const isSelected = winnerSelection.includes(player);
+
+                          return (
+                            <button
+                              key={player}
+                              onClick={() => toggleWinnerSelection(player)}
+                              style={{
+                                padding: "12px 14px",
+                                borderRadius: 14,
+                                border: isSelected ? "1px solid transparent" : "1px solid rgba(220, 38, 38, 0.24)",
+                                background: isSelected
+                                  ? "linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%)"
+                                  : "rgba(255,255,255,0.72)",
+                                color: isSelected ? "white" : "#991b1b",
+                                fontWeight: 800,
+                                cursor: "pointer",
+                              }}
+                            >
+                              {player} (+{impostorWinPoints})
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        onClick={toggleCrewmatesWinner}
+                        style={{
+                          padding: "14px 16px",
+                          borderRadius: 14,
+                          border: winnerSelection.includes(CREWMATES_WINNER_KEY)
+                            ? "1px solid transparent"
+                            : "1px solid rgba(99, 102, 241, 0.28)",
+                          background: winnerSelection.includes(CREWMATES_WINNER_KEY)
+                            ? "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)"
+                            : "rgba(255,255,255,0.72)",
+                          color: winnerSelection.includes(CREWMATES_WINNER_KEY) ? "white" : "#4f46e5",
+                          fontWeight: 900,
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        Crewmates (+1)
                       </button>
 
                       <button
-                        onClick={awardCrewWin}
+                        onClick={saveRoundScore}
+                        disabled={winnerSelection.length === 0}
                         style={{
                           padding: "12px 18px",
                           borderRadius: 14,
                           border: 0,
-                          background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+                          background: winnerSelection.length === 0 ? "#cbd5e1" : "#172554",
                           color: "white",
-                          fontWeight: 800,
-                          cursor: "pointer",
+                          fontWeight: 900,
+                          cursor: winnerSelection.length === 0 ? "not-allowed" : "pointer",
                         }}
                       >
-                        Crew won (+1 each)
+                        Save score
                       </button>
                     </div>
                   ) : (
