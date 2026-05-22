@@ -300,7 +300,7 @@ const CHARACTER_BANK = [
   { name: "Linoy Ashram", hints: ["ribbon", "grace", "focus"], tags: ["sports", "israel"] },
   { name: "Peter Paltchik", hints: ["tattoo", "grip", "pressure"], tags: ["sports", "israel"] },
   { name: "Artem Dolgopyat", hints: ["floor", "twist", "landing"], tags: ["sports", "israel"] },
-  { name: "Deni Avdija", hints: ["draft", "lefty", "overseas"], tags: ["sports", "israel"] },
+  { name: "Deni Avdija", hints: ["draft", "Gorani", "overseas"], tags: ["sports", "israel"] },
   { name: "Lior Eliyahu", hints: ["hook", "yellow", "silk"], tags: ["sports", "israel"] },
   { name: "Tal Brody", hints: ["map", "speech", "legend"], tags: ["sports", "israel"] },
   { name: "Yael Arad", hints: ["first", "tatami", "trailblazer"], tags: ["sports", "israel"] },
