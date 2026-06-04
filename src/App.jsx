@@ -786,6 +786,7 @@ export default function App() {
   const [playerName, setPlayerName] = useState("");
   const [roomName, setRoomName] = useState("");
   const [players, setPlayers] = useState(["Alon", "Dana", "Yossi", "Maya"]);
+  const [frozenPlayers, setFrozenPlayers] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
   const [editingValue, setEditingValue] = useState("");
   const [settings, setSettings] = useState({
@@ -814,8 +815,9 @@ export default function App() {
 
   const isMobile = windowWidth < 768;
   const currentAssignment = round?.assignments?.[currentIndex] ?? null;
-  const canStart = players.length >= 3;
-  const maxImpostorCount = Math.max(1, Math.min(3, players.length - 1));
+  const activePlayersForRound = players.filter((player) => !frozenPlayers.includes(player));
+  const canStart = activePlayersForRound.length >= 3;
+  const maxImpostorCount = Math.max(1, Math.min(3, activePlayersForRound.length - 1));
   const roomPoolCount = useMemo(
     () => filterItems(settings.theme, settings.pool).length,
     [settings.theme, settings.pool]
@@ -845,7 +847,7 @@ export default function App() {
 
   useEffect(() => {
     setScores((prev) => createScoreMap(players, prev));
-  }, [players]);
+  }, [players, frozenPlayers]);
 
   useEffect(() => {
     setImpostorCounts((prev) => createImpostorCountMap(players, prev));
@@ -873,6 +875,65 @@ export default function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+
+  function toggleFreezePlayer(player) {
+    const alreadyFrozen = frozenPlayers.includes(player);
+
+    if (alreadyFrozen) {
+      setFrozenPlayers((prev) => prev.filter((name) => name !== player));
+      return;
+    }
+
+    setFrozenPlayers((prev) => [...prev, player]);
+
+    if (round && !showFinalResults) {
+      const isFrozenPlayerImpostor = round.impostorPlayers?.includes(player);
+
+      if (isFrozenPlayerImpostor) {
+        window.alert("The impostor left the game. Please start a new round.");
+
+        setRound(null);
+        setCurrentIndex(0);
+        setRevealed(false);
+        setShowFinalRevealScreen(false);
+        setShowFinalResults(false);
+        setRoundScored(false);
+        setWinnerSelection([]);
+        return;
+      }
+
+      setRound((prevRound) => {
+        if (!prevRound) return prevRound;
+
+        const removedIndex = prevRound.assignments.findIndex((assignment) => assignment.player === player);
+        if (removedIndex === -1) return prevRound;
+
+        const nextAssignments = prevRound.assignments.filter((assignment) => assignment.player !== player);
+
+        setCurrentIndex((prevIndex) => {
+          if (nextAssignments.length === 0) return 0;
+          if (removedIndex < prevIndex) return Math.max(0, prevIndex - 1);
+          if (prevIndex >= nextAssignments.length) return nextAssignments.length - 1;
+          return prevIndex;
+        });
+
+        if (nextAssignments.length === 0) {
+          setShowFinalRevealScreen(true);
+          setRevealed(false);
+        }
+
+        return {
+          ...prevRound,
+          assignments: nextAssignments,
+        };
+      });
+    }
+  }
+
+  function isPlayerFrozen(player) {
+    return frozenPlayers.includes(player);
+  }
+
   function addPlayer() {
     const trimmed = playerName.trim();
     if (!trimmed) return;
@@ -883,6 +944,7 @@ export default function App() {
 
   function removePlayer(name) {
     setPlayers((prev) => prev.filter((player) => player !== name));
+    setFrozenPlayers((prev) => prev.filter((player) => player !== name));
     setScores((prev) => {
       const next = { ...prev };
       delete next[name];
@@ -914,6 +976,7 @@ export default function App() {
     const nextPlayers = players.map((player, index) => (index === editingIndex ? trimmed : player));
 
     setPlayers(nextPlayers);
+    setFrozenPlayers((prev) => prev.map((player) => (player === oldName ? trimmed : player)));
 
     setScores((prev) => {
       const next = { ...prev };
@@ -928,11 +991,12 @@ export default function App() {
   }
 
   function startRound() {
-    if (!canStart) return;
+    const activePlayers = players.filter((player) => !frozenPlayers.includes(player));
+    if (activePlayers.length < 3) return;
     if (competitionMode && showFinalResults && !roundScored) return;
 
     const nextRound = buildRound(
-      players,
+      activePlayers,
       settings,
       usedCharacters,
       { counts: impostorCounts, history: impostorHistory },
@@ -957,11 +1021,12 @@ export default function App() {
   }
 
   function skipRound() {
-    if (!canStart) return;
+    const activePlayers = players.filter((player) => !frozenPlayers.includes(player));
+    if (activePlayers.length < 3) return;
     if (!round) return;
 
     const nextRound = buildRound(
-      players,
+      activePlayers,
       settings,
       usedCharacters,
       { counts: impostorCounts, history: impostorHistory },
@@ -1057,7 +1122,7 @@ export default function App() {
     const impostorWinPoints = (round.impostorPlayers?.length ?? 1) === 1 ? 3 : 2;
     const crewmatesWin = winnerSelection.includes(CREWMATES_WINNER_KEY);
     const winnersToScore = crewmatesWin
-      ? players.filter((player) => !impostorSet.has(player))
+      ? players.filter((player) => !frozenPlayers.includes(player) && !impostorSet.has(player))
       : winnerSelection.filter((player) => impostorSet.has(player));
 
     if (winnersToScore.length === 0) return;
@@ -1152,33 +1217,134 @@ export default function App() {
                   background: "rgba(255,255,255,0.82)",
                   fontSize: 16,
                   outline: "none",
+                  color: "#111827",
+                  WebkitTextFillColor: "#111827",
                 }}
               />
             </label>
 
-            <div style={{ display: "grid", gap: 10 }}>
-              <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Game theme</span>
-              <select
-                value={settings.theme}
-                onChange={(e) => setSettings((prev) => ({ ...prev, theme: e.target.value }))}
-                style={{
-                  padding: 14,
-                  borderRadius: 18,
-                  border: "1px solid rgba(99, 102, 241, 0.18)",
-                  background: "rgba(255,255,255,0.82)",
-                  fontSize: 16,
-                  outline: "none",
-                  color: "#172554",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                {THEME_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: isMobile ? 8 : 14,
+                alignItems: "start",
+              }}
+            >
+              <div style={{ display: "grid", gap: isMobile ? 6 : 10, minWidth: 0 }}>
+                <span
+                  style={{
+                    fontWeight: 700,
+                    color: "#172554",
+                    textAlign: "center",
+                    fontSize: isMobile ? 12 : 16,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Game theme
+                </span>
+                <select
+                  value={settings.theme}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, theme: e.target.value }))}
+                  style={{
+                    width: "100%",
+                    minWidth: 0,
+                    padding: isMobile ? "11px 6px" : 14,
+                    borderRadius: isMobile ? 14 : 18,
+                    border: "1px solid rgba(99, 102, 241, 0.18)",
+                    background: "rgba(255,255,255,0.82)",
+                    fontSize: isMobile ? 12 : 16,
+                    outline: "none",
+                    color: "#172554",
+                    WebkitTextFillColor: "#172554",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  {THEME_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: "grid", gap: isMobile ? 6 : 10, minWidth: 0 }}>
+                <span
+                  style={{
+                    fontWeight: 700,
+                    color: "#172554",
+                    textAlign: "center",
+                    fontSize: isMobile ? 12 : 16,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Hint difficulty
+                </span>
+                <select
+                  value={settings.difficulty}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, difficulty: e.target.value }))}
+                  style={{
+                    width: "100%",
+                    minWidth: 0,
+                    padding: isMobile ? "11px 6px" : 14,
+                    borderRadius: isMobile ? 14 : 18,
+                    border: "1px solid rgba(99, 102, 241, 0.18)",
+                    background: "rgba(255,255,255,0.82)",
+                    fontSize: isMobile ? 12 : 16,
+                    outline: "none",
+                    color: "#172554",
+                    WebkitTextFillColor: "#172554",
+                    fontWeight: 700,
+                    boxSizing: "border-box",
+                  }}
+                >
+                  {DIFFICULTY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: "grid", gap: isMobile ? 6 : 10, minWidth: 0 }}>
+                <span
+                  style={{
+                    fontWeight: 700,
+                    color: "#172554",
+                    textAlign: "center",
+                    fontSize: isMobile ? 12 : 16,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Impostors
+                </span>
+                <select
+                  value={impostorCount}
+                  onChange={(e) => setImpostorCount(Number(e.target.value))}
+                  style={{
+                    width: "100%",
+                    minWidth: 0,
+                    padding: isMobile ? "11px 6px" : 14,
+                    borderRadius: isMobile ? 14 : 18,
+                    border: "1px solid rgba(99, 102, 241, 0.18)",
+                    background: "rgba(255,255,255,0.82)",
+                    fontSize: isMobile ? 12 : 16,
+                    outline: "none",
+                    color: "#172554",
+                    WebkitTextFillColor: "#172554",
+                    fontWeight: 700,
+                    boxSizing: "border-box",
+                  }}
+                >
+                  {Array.from({ length: maxImpostorCount }, (_, index) => index + 1).map((count) => (
+                    <option key={count} value={count}>
+                      {count} {count === 1 ? "impostor" : "impostors"}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {settings.theme === "characters" ? (
@@ -1212,54 +1378,6 @@ export default function App() {
                 </div>
               </div>
             )}
-
-            <div style={{ display: "grid", gap: 10 }}>
-              <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Hint difficulty</span>
-              <select
-                value={settings.difficulty}
-                onChange={(e) => setSettings((prev) => ({ ...prev, difficulty: e.target.value }))}
-                style={{
-                  padding: 14,
-                  borderRadius: 18,
-                  border: "1px solid rgba(99, 102, 241, 0.18)",
-                  background: "rgba(255,255,255,0.82)",
-                  fontSize: 16,
-                  outline: "none",
-                  color: "#172554",
-                  fontWeight: 700,
-                }}
-              >
-                {DIFFICULTY_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ display: "grid", gap: 10 }}>
-              <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Impostors</span>
-              <select
-                value={impostorCount}
-                onChange={(e) => setImpostorCount(Number(e.target.value))}
-                style={{
-                  padding: 14,
-                  borderRadius: 18,
-                  border: "1px solid rgba(99, 102, 241, 0.18)",
-                  background: "rgba(255,255,255,0.82)",
-                  fontSize: 16,
-                  outline: "none",
-                  color: "#172554",
-                  fontWeight: 700,
-                }}
-              >
-                {Array.from({ length: maxImpostorCount }, (_, index) => index + 1).map((count) => (
-                  <option key={count} value={count}>
-                    {count} {count === 1 ? "impostor" : "impostors"}
-                  </option>
-                ))}
-              </select>
-            </div>
 
             <div style={{ display: "grid", gap: 10 }}>
               <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Competition mode</span>
@@ -1332,6 +1450,8 @@ export default function App() {
                     fontSize: 16,
                     outline: "none",
                     boxSizing: "border-box",
+                    color: "#111827",
+                    WebkitTextFillColor: "#111827",
                   }}
                 />
                 <button
@@ -1412,13 +1532,35 @@ export default function App() {
                         background: "transparent",
                         cursor: "pointer",
                         fontSize: 17,
-                        color: "#111827",
+                        color: isPlayerFrozen(player) ? "#94a3b8" : "#111827",
+                        textDecoration: isPlayerFrozen(player) ? "line-through" : "none",
                       }}
                       title="Click to edit"
                     >
                       {player}
                     </button>
                   )}
+                  <button
+                    onClick={() => toggleFreezePlayer(player)}
+                    style={{
+                      border: "1px solid rgba(14, 165, 233, 0.22)",
+                      background: isPlayerFrozen(player) ? "rgba(14, 165, 233, 0.16)" : "rgba(255,255,255,0.72)",
+                      cursor: "pointer",
+                      color: "#0369a1",
+                      fontWeight: 800,
+                      fontSize: isMobile ? 12 : 13,
+                      borderRadius: 999,
+                      padding: isMobile ? "7px 9px" : "7px 10px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      opacity: 1,
+                    }}
+                    title={isPlayerFrozen(player) ? "Unfreeze player" : "Freeze player for this round"}
+                  >
+                    <span aria-hidden="true">🧊</span>
+                    {isPlayerFrozen(player) ? "Frozen" : "Freeze"}
+                  </button>
                   <button
                     onClick={() => removePlayer(player)}
                     style={{
