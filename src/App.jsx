@@ -755,7 +755,7 @@ function MetricCard({ label, value, accent, isMobile }) {
       }}
     >
       <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: isMobile ? 16 : 24, fontWeight: 800, color: accent || "#111827" }}>
+      <div style={{ fontSize: isMobile ? "clamp(11px, 3.5vw, 13px)" : "clamp(16px, 2vw, 22px)", fontWeight: 800, color: accent || "#111827" }}>
         {value}
       </div>
     </div>
@@ -893,7 +893,7 @@ function IradRevealCard({ assignment, held, onHoldStart, onHoldEnd, isMobile, to
             }}
           />
           <div style={{ position: "relative", display: "grid", gap: 5, justifyItems: "center", minWidth: 0 }}>
-            <div style={{ fontSize: isMobile ? 16 : 24 }}>🔥</div>
+            <div style={{ fontSize: isMobile ? "clamp(11px, 3.5vw, 13px)" : "clamp(16px, 2vw, 22px)" }}>🔥</div>
             <div
               style={{
                 fontSize: isMobile ? 12 : 18,
@@ -1402,7 +1402,7 @@ export default function App() {
         minHeight: "100vh",
         background: iradMode ? "radial-gradient(circle at 15% 12%, rgba(255, 184, 28, 0.32), transparent 22%), radial-gradient(circle at 88% 18%, rgba(239, 68, 68, 0.34), transparent 25%), radial-gradient(circle at 50% 105%, rgba(249, 115, 22, 0.42), transparent 34%), linear-gradient(145deg, #090202 0%, #220404 34%, #451008 62%, #100404 100%)" : "radial-gradient(circle at top left, rgba(168, 85, 247, 0.65), transparent 25%), radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.55), transparent 25%), linear-gradient(135deg, #eef2ff 0%, #f5f3ff 35%, #eff6ff 100%)",
         fontFamily: "Inter, Arial, sans-serif",
-        color: iradMode ? "#fff7ed" : "#111827",
+        color: "#111827",
         padding: isMobile ? 12 : 24,
       }}
     >
@@ -1482,11 +1482,11 @@ export default function App() {
                   padding: 14,
                   borderRadius: 18,
                   border: "1px solid rgba(99, 102, 241, 0.18)",
-                  background: iradMode ? "rgba(24, 5, 5, 0.78)" : "rgba(255,255,255,0.82)",
+                  background: "rgba(255,255,255,0.92)",
                   fontSize: 16,
                   outline: "none",
-                  color: iradMode ? "#fff7ed" : "#111827",
-                  WebkitTextFillColor: iradMode ? "#fff7ed" : "#111827",
+                  color: "#111827",
+                  WebkitTextFillColor: "#111827",
                 }}
               />
             </label>
@@ -1524,11 +1524,11 @@ export default function App() {
                     padding: isMobile ? "11px 6px" : 14,
                     borderRadius: isMobile ? 14 : 18,
                     border: "1px solid rgba(99, 102, 241, 0.18)",
-                    background: iradMode ? "rgba(24, 5, 5, 0.78)" : "rgba(255,255,255,0.82)",
+                    background: "rgba(255,255,255,0.92)",
                     fontSize: isMobile ? 12 : 16,
                     outline: "none",
                     color: iradMode ? "#fed7aa" : "#172554",
-                    WebkitTextFillColor: iradMode ? "#fed7aa" : "#172554",
+                    WebkitTextFillColor: "#172554",
                     fontWeight: 700,
                     cursor: iradMode ? "not-allowed" : "pointer",
                     boxSizing: "border-box",
@@ -1563,11 +1563,11 @@ export default function App() {
                     padding: isMobile ? "11px 6px" : 14,
                     borderRadius: isMobile ? 14 : 18,
                     border: "1px solid rgba(99, 102, 241, 0.18)",
-                    background: iradMode ? "rgba(24, 5, 5, 0.78)" : "rgba(255,255,255,0.82)",
+                    background: "rgba(255,255,255,0.92)",
                     fontSize: isMobile ? 12 : 16,
                     outline: "none",
                     color: iradMode ? "#fed7aa" : "#172554",
-                    WebkitTextFillColor: iradMode ? "#fed7aa" : "#172554",
+                    WebkitTextFillColor: "#172554",
                     fontWeight: 700,
                     boxSizing: "border-box",
                   }}
@@ -1601,11 +1601,11 @@ export default function App() {
                     padding: isMobile ? "11px 6px" : 14,
                     borderRadius: isMobile ? 14 : 18,
                     border: "1px solid rgba(99, 102, 241, 0.18)",
-                    background: iradMode ? "rgba(24, 5, 5, 0.78)" : "rgba(255,255,255,0.82)",
+                    background: "rgba(255,255,255,0.92)",
                     fontSize: isMobile ? 12 : 16,
                     outline: "none",
                     color: iradMode ? "#fed7aa" : "#172554",
-                    WebkitTextFillColor: iradMode ? "#fed7aa" : "#172554",
+                    WebkitTextFillColor: "#172554",
                     fontWeight: 700,
                     boxSizing: "border-box",
                   }}
@@ -1687,7 +1687,7 @@ export default function App() {
                       padding: "11px 16px",
                       borderRadius: 999,
                       border: "1px solid rgba(239, 68, 68, 0.2)",
-                      background: iradMode ? "rgba(24, 5, 5, 0.72)" : "rgba(255,255,255,0.72)",
+                      background: "rgba(255,255,255,0.88)",
                       color: "#b91c1c",
                       fontWeight: 800,
                       cursor: "pointer",
@@ -1718,12 +1718,12 @@ export default function App() {
                     padding: 14,
                     borderRadius: 18,
                     border: "1px solid rgba(99, 102, 241, 0.18)",
-                    background: iradMode ? "rgba(24, 5, 5, 0.78)" : "rgba(255,255,255,0.82)",
+                    background: "rgba(255,255,255,0.92)",
                     fontSize: 16,
                     outline: "none",
                     boxSizing: "border-box",
-                    color: iradMode ? "#fff7ed" : "#111827",
-                    WebkitTextFillColor: iradMode ? "#fff7ed" : "#111827",
+                    color: "#111827",
+                    WebkitTextFillColor: "#111827",
                   }}
                 />
                 <button
@@ -1767,10 +1767,10 @@ export default function App() {
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
-                    background: iradMode ? "rgba(24, 5, 5, 0.78)" : "rgba(255,255,255,0.82)",
+                    background: "rgba(255,255,255,0.92)",
                     borderRadius: 999,
                     padding: "10px 14px",
-                    border: "1px solid rgba(99, 102, 241, 0.14)",
+                    border: "1px solid rgba(99, 102, 241, 0.18)",
                     boxShadow: "0 8px 18px rgba(99, 102, 241, 0.08)",
                   }}
                 >
@@ -1793,7 +1793,7 @@ export default function App() {
                         background: "transparent",
                         fontSize: 17,
                         minWidth: 70,
-                        color: iradMode ? "#fff7ed" : "#111827",
+                        color: "#111827",
                       }}
                     />
                   ) : (
@@ -1839,7 +1839,7 @@ export default function App() {
                       border: 0,
                       background: "transparent",
                       cursor: "pointer",
-                      color: iradMode ? "#fb923c" : "#64748b",
+                      color: "#64748b",
                       fontWeight: 800,
                       fontSize: 16,
                     }}
@@ -1850,7 +1850,7 @@ export default function App() {
               ))}
             </div>
 
-            <div style={{ marginTop: 10, color: iradMode ? "#fb923c" : "#64748b", fontSize: 14, textAlign: "center" }}>
+            <div style={{ marginTop: 10, color: "#64748b", fontSize: 14, textAlign: "center" }}>
               Click a player name to edit it.
             </div>
           </div>
@@ -2109,7 +2109,7 @@ export default function App() {
                   border: "1px solid rgba(99, 102, 241, 0.14)",
                 }}
               >
-                <div style={{ fontSize: 12, color: iradMode ? "#fb923c" : "#64748b", letterSpacing: 1.4, textTransform: "uppercase" }}>
+                <div style={{ fontSize: 12, color: "#64748b", letterSpacing: 1.4, textTransform: "uppercase" }}>
                   Current player
                 </div>
                 <div
@@ -2123,7 +2123,7 @@ export default function App() {
                 >
                   {getIradDisplayName(currentAssignment.player)}
                 </div>
-                <div style={{ color: iradMode ? "#fb923c" : "#64748b", marginTop: 8 }}>Only this player should look at the screen.</div>
+                <div style={{ color: "#64748b", marginTop: 8 }}>Only this player should look at the screen.</div>
               </div>
 
               <div
@@ -2304,7 +2304,7 @@ export default function App() {
                 <div
                   style={{
                     marginTop: 18,
-                    background: iradMode ? "rgba(24, 5, 5, 0.78)" : "rgba(255,255,255,0.82)",
+                    background: "rgba(255,255,255,0.92)",
                     borderRadius: 20,
                     padding: 18,
                     border: "1px solid rgba(99, 102, 241, 0.14)",
