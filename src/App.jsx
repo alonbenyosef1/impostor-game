@@ -1473,7 +1473,7 @@ export default function App() {
 
           <div style={{ display: "grid", gap: 16, marginBottom: 26 }}>
             <label style={{ display: "grid", gap: 8 }}>
-              <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Room name</span>
+              <span style={{ fontWeight: 700, color: iradMode ? "#fed7aa" : "#172554", textAlign: "center" }}>Room name</span>
               <input
                 value={roomName}
                 onChange={(e) => setRoomName(e.target.value)}
@@ -1482,11 +1482,11 @@ export default function App() {
                   padding: 14,
                   borderRadius: 18,
                   border: "1px solid rgba(99, 102, 241, 0.18)",
-                  background: "rgba(255,255,255,0.82)",
+                  background: iradMode ? "rgba(24, 5, 5, 0.78)" : "rgba(255,255,255,0.82)",
                   fontSize: 16,
                   outline: "none",
-                  color: "#111827",
-                  WebkitTextFillColor: "#111827",
+                  color: iradMode ? "#fff7ed" : "#111827",
+                  WebkitTextFillColor: iradMode ? "#fff7ed" : "#111827",
                 }}
               />
             </label>
@@ -1503,7 +1503,7 @@ export default function App() {
                 <span
                   style={{
                     fontWeight: 700,
-                    color: "#172554",
+                    color: iradMode ? "#fed7aa" : "#172554",
                     textAlign: "center",
                     fontSize: isMobile ? 12 : 16,
                     whiteSpace: "nowrap",
@@ -1524,11 +1524,11 @@ export default function App() {
                     padding: isMobile ? "11px 6px" : 14,
                     borderRadius: isMobile ? 14 : 18,
                     border: "1px solid rgba(99, 102, 241, 0.18)",
-                    background: "rgba(255,255,255,0.82)",
+                    background: iradMode ? "rgba(24, 5, 5, 0.78)" : "rgba(255,255,255,0.82)",
                     fontSize: isMobile ? 12 : 16,
                     outline: "none",
-                    color: "#172554",
-                    WebkitTextFillColor: "#172554",
+                    color: iradMode ? "#fed7aa" : "#172554",
+                    WebkitTextFillColor: iradMode ? "#fed7aa" : "#172554",
                     fontWeight: 700,
                     cursor: iradMode ? "not-allowed" : "pointer",
                     boxSizing: "border-box",
@@ -1546,7 +1546,7 @@ export default function App() {
                 <span
                   style={{
                     fontWeight: 700,
-                    color: "#172554",
+                    color: iradMode ? "#fed7aa" : "#172554",
                     textAlign: "center",
                     fontSize: isMobile ? 12 : 16,
                     whiteSpace: "nowrap",
@@ -1563,11 +1563,11 @@ export default function App() {
                     padding: isMobile ? "11px 6px" : 14,
                     borderRadius: isMobile ? 14 : 18,
                     border: "1px solid rgba(99, 102, 241, 0.18)",
-                    background: "rgba(255,255,255,0.82)",
+                    background: iradMode ? "rgba(24, 5, 5, 0.78)" : "rgba(255,255,255,0.82)",
                     fontSize: isMobile ? 12 : 16,
                     outline: "none",
-                    color: "#172554",
-                    WebkitTextFillColor: "#172554",
+                    color: iradMode ? "#fed7aa" : "#172554",
+                    WebkitTextFillColor: iradMode ? "#fed7aa" : "#172554",
                     fontWeight: 700,
                     boxSizing: "border-box",
                   }}
@@ -1584,7 +1584,7 @@ export default function App() {
                 <span
                   style={{
                     fontWeight: 700,
-                    color: "#172554",
+                    color: iradMode ? "#fed7aa" : "#172554",
                     textAlign: "center",
                     fontSize: isMobile ? 12 : 16,
                     whiteSpace: "nowrap",
@@ -1601,11 +1601,11 @@ export default function App() {
                     padding: isMobile ? "11px 6px" : 14,
                     borderRadius: isMobile ? 14 : 18,
                     border: "1px solid rgba(99, 102, 241, 0.18)",
-                    background: "rgba(255,255,255,0.82)",
+                    background: iradMode ? "rgba(24, 5, 5, 0.78)" : "rgba(255,255,255,0.82)",
                     fontSize: isMobile ? 12 : 16,
                     outline: "none",
-                    color: "#172554",
-                    WebkitTextFillColor: "#172554",
+                    color: iradMode ? "#fed7aa" : "#172554",
+                    WebkitTextFillColor: iradMode ? "#fed7aa" : "#172554",
                     fontWeight: 700,
                     boxSizing: "border-box",
                   }}
@@ -1621,7 +1621,7 @@ export default function App() {
 
             {settings.theme === "characters" ? (
               <div style={{ display: "grid", gap: 10 }}>
-                <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Character pool</span>
+                <span style={{ fontWeight: 700, color: iradMode ? "#fed7aa" : "#172554", textAlign: "center" }}>Character pool</span>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
                   {CHARACTER_POOL_OPTIONS.map((option) => (
                     <PillButton
@@ -1636,7 +1636,7 @@ export default function App() {
               </div>
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
-                <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Places & Objects pool</span>
+                <span style={{ fontWeight: 700, color: iradMode ? "#fed7aa" : "#172554", textAlign: "center" }}>Places & Objects pool</span>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
                   {PLACES_OBJECTS_POOL_OPTIONS.map((option) => (
                     <PillButton
@@ -1652,7 +1652,7 @@ export default function App() {
             )}
 
             <div style={{ display: "grid", gap: 10 }}>
-              <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Competition mode</span>
+              <span style={{ fontWeight: 700, color: iradMode ? "#fed7aa" : "#172554", textAlign: "center" }}>Competition mode</span>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
                 <PillButton active={competitionMode} onClick={toggleCompetitionMode}>
                   {competitionMode ? "Competition ON" : "Competition OFF"}
@@ -1687,7 +1687,7 @@ export default function App() {
                       padding: "11px 16px",
                       borderRadius: 999,
                       border: "1px solid rgba(239, 68, 68, 0.2)",
-                      background: "rgba(255,255,255,0.72)",
+                      background: iradMode ? "rgba(24, 5, 5, 0.72)" : "rgba(255,255,255,0.72)",
                       color: "#b91c1c",
                       fontWeight: 800,
                       cursor: "pointer",
@@ -1700,7 +1700,7 @@ export default function App() {
             </div>
 
             <label style={{ display: "grid", gap: 8 }}>
-              <span style={{ fontWeight: 700, color: "#172554", textAlign: "center" }}>Add player</span>
+              <span style={{ fontWeight: 700, color: iradMode ? "#fed7aa" : "#172554", textAlign: "center" }}>Add player</span>
               <div
                 style={{
                   display: "grid",
@@ -1718,12 +1718,12 @@ export default function App() {
                     padding: 14,
                     borderRadius: 18,
                     border: "1px solid rgba(99, 102, 241, 0.18)",
-                    background: "rgba(255,255,255,0.82)",
+                    background: iradMode ? "rgba(24, 5, 5, 0.78)" : "rgba(255,255,255,0.82)",
                     fontSize: 16,
                     outline: "none",
                     boxSizing: "border-box",
-                    color: "#111827",
-                    WebkitTextFillColor: "#111827",
+                    color: iradMode ? "#fff7ed" : "#111827",
+                    WebkitTextFillColor: iradMode ? "#fff7ed" : "#111827",
                   }}
                 />
                 <button
@@ -1751,7 +1751,7 @@ export default function App() {
               style={{
                 fontWeight: 800,
                 marginBottom: 12,
-                color: "#172554",
+                color: iradMode ? "#fed7aa" : "#172554",
                 fontSize: isMobile ? 18 : 20,
                 textAlign: "center",
               }}
@@ -1767,7 +1767,7 @@ export default function App() {
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
-                    background: "rgba(255,255,255,0.82)",
+                    background: iradMode ? "rgba(24, 5, 5, 0.78)" : "rgba(255,255,255,0.82)",
                     borderRadius: 999,
                     padding: "10px 14px",
                     border: "1px solid rgba(99, 102, 241, 0.14)",
@@ -1793,7 +1793,7 @@ export default function App() {
                         background: "transparent",
                         fontSize: 17,
                         minWidth: 70,
-                        color: "#111827",
+                        color: iradMode ? "#fff7ed" : "#111827",
                       }}
                     />
                   ) : (
@@ -1839,7 +1839,7 @@ export default function App() {
                       border: 0,
                       background: "transparent",
                       cursor: "pointer",
-                      color: "#64748b",
+                      color: iradMode ? "#fb923c" : "#64748b",
                       fontWeight: 800,
                       fontSize: 16,
                     }}
@@ -1850,7 +1850,7 @@ export default function App() {
               ))}
             </div>
 
-            <div style={{ marginTop: 10, color: "#64748b", fontSize: 14, textAlign: "center" }}>
+            <div style={{ marginTop: 10, color: iradMode ? "#fb923c" : "#64748b", fontSize: 14, textAlign: "center" }}>
               Click a player name to edit it.
             </div>
           </div>
@@ -1887,7 +1887,7 @@ export default function App() {
                 style={{
                   fontWeight: 800,
                   marginBottom: 12,
-                  color: "#172554",
+                  color: iradMode ? "#fed7aa" : "#172554",
                   fontSize: isMobile ? 18 : 20,
                   textAlign: "center",
                 }}
@@ -1909,7 +1909,7 @@ export default function App() {
                       border: "1px solid rgba(99, 102, 241, 0.1)",
                     }}
                   >
-                    <div style={{ fontWeight: 700, color: "#172554" }}>{name}</div>
+                    <div style={{ fontWeight: 700, color: iradMode ? "#fed7aa" : "#172554" }}>{name}</div>
                     <div style={{ fontWeight: 900, color: "#4f46e5" }}>{points}</div>
                   </div>
                 ))}
@@ -2000,7 +2000,7 @@ export default function App() {
               fontSize: isMobile ? 28 : 36,
               fontWeight: 900,
               marginBottom: 10,
-              color: "#172554",
+              color: iradMode ? "#fed7aa" : "#172554",
               textAlign: "center",
             }}
           >
@@ -2109,7 +2109,7 @@ export default function App() {
                   border: "1px solid rgba(99, 102, 241, 0.14)",
                 }}
               >
-                <div style={{ fontSize: 12, color: "#64748b", letterSpacing: 1.4, textTransform: "uppercase" }}>
+                <div style={{ fontSize: 12, color: iradMode ? "#fb923c" : "#64748b", letterSpacing: 1.4, textTransform: "uppercase" }}>
                   Current player
                 </div>
                 <div
@@ -2123,7 +2123,7 @@ export default function App() {
                 >
                   {getIradDisplayName(currentAssignment.player)}
                 </div>
-                <div style={{ color: "#64748b", marginTop: 8 }}>Only this player should look at the screen.</div>
+                <div style={{ color: iradMode ? "#fb923c" : "#64748b", marginTop: 8 }}>Only this player should look at the screen.</div>
               </div>
 
               <div
@@ -2304,13 +2304,13 @@ export default function App() {
                 <div
                   style={{
                     marginTop: 18,
-                    background: "rgba(255,255,255,0.82)",
+                    background: iradMode ? "rgba(24, 5, 5, 0.78)" : "rgba(255,255,255,0.82)",
                     borderRadius: 20,
                     padding: 18,
                     border: "1px solid rgba(99, 102, 241, 0.14)",
                   }}
                 >
-                  <div style={{ fontSize: 18, fontWeight: 800, color: "#172554", marginBottom: 12 }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: iradMode ? "#fed7aa" : "#172554", marginBottom: 12 }}>
                     Choose the winner(s)
                   </div>
 
