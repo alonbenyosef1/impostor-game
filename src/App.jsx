@@ -755,7 +755,7 @@ function MetricCard({ label, value, accent, isMobile }) {
       }}
     >
       <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: isMobile ? 18 : 24, fontWeight: 800, color: accent || "#111827" }}>
+      <div style={{ fontSize: isMobile ? 16 : 24, fontWeight: 800, color: accent || "#111827" }}>
         {value}
       </div>
     </div>
@@ -782,6 +782,200 @@ function PillButton({ active, children, onClick }) {
   );
 }
 
+function getIradDisplayName(player) {
+  const normalized = String(player || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, " ");
+
+  const yegerNames = new Set(["ohad", "ohad jeagerman", "jeagerman", "jeager"]);
+
+  if (yegerNames.has(normalized)) {
+    return "yeger 😈";
+  }
+
+  return player;
+}
+
+function getIradGridColumns(count, isMobile) {
+  if (!isMobile) {
+    if (count <= 4) return "repeat(2, minmax(0, 1fr))";
+    if (count <= 6) return "repeat(3, minmax(0, 1fr))";
+    return "repeat(4, minmax(0, 1fr))";
+  }
+
+  if (count <= 4) return "repeat(2, minmax(0, 1fr))";
+  if (count <= 6) return "repeat(3, minmax(0, 1fr))";
+  return "repeat(4, minmax(0, 1fr))";
+}
+
+function getIradCardHeight(count, isMobile) {
+  if (!isMobile) {
+    if (count <= 4) return 190;
+    if (count <= 6) return 165;
+    if (count <= 8) return 145;
+    return 135;
+  }
+
+  if (count <= 4) return 142;
+  if (count <= 6) return 118;
+  if (count <= 8) return 102;
+  return 108;
+}
+
+function IradRevealCard({ assignment, held, onHoldStart, onHoldEnd, isMobile, totalCards }) {
+  const cardHeight = getIradCardHeight(totalCards, isMobile);
+  const isImpostor = assignment.isImpostor;
+  const displayName = getIradDisplayName(assignment.player);
+
+  return (
+    <button
+      type="button"
+      onPointerDown={(event) => {
+        event.preventDefault();
+        onHoldStart(assignment.player);
+      }}
+      onPointerUp={onHoldEnd}
+      onPointerLeave={onHoldEnd}
+      onPointerCancel={onHoldEnd}
+      onContextMenu={(event) => event.preventDefault()}
+      onSelectStart={(event) => event.preventDefault()}
+      style={{
+        position: "relative",
+        height: cardHeight,
+        border: 0,
+        borderRadius: isMobile ? 16 : 22,
+        padding: 0,
+        background: "transparent",
+        perspective: "1100px",
+        cursor: "pointer",
+        touchAction: "none",
+        ...NO_SELECTION_STYLE,
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: isMobile ? 16 : 22,
+          transformStyle: "preserve-3d",
+          WebkitTransformStyle: "preserve-3d",
+          transition: "transform 0.22s ease-out",
+          transform: held ? "rotateY(180deg)" : "rotateY(0deg)",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "grid",
+            placeItems: "center",
+            padding: isMobile ? 8 : 14,
+            borderRadius: isMobile ? 16 : 22,
+            backfaceVisibility: "hidden",
+            WebkitBackfaceVisibility: "hidden",
+            background:
+              "radial-gradient(circle at top left, rgba(251, 191, 36, 0.32), transparent 35%), linear-gradient(145deg, #450a0a 0%, #7f1d1d 45%, #111827 100%)",
+            color: "#fff7ed",
+            border: "1px solid rgba(251, 146, 60, 0.42)",
+            boxShadow: "0 10px 24px rgba(127, 29, 29, 0.42)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              inset: "auto -20% -45% -20%",
+              height: "70%",
+              background:
+                "radial-gradient(circle, rgba(249, 115, 22, 0.5), transparent 62%), radial-gradient(circle at 60% 30%, rgba(250, 204, 21, 0.38), transparent 50%)",
+              filter: "blur(10px)",
+            }}
+          />
+          <div style={{ position: "relative", display: "grid", gap: 5, justifyItems: "center", minWidth: 0 }}>
+            <div style={{ fontSize: isMobile ? 16 : 24 }}>🔥</div>
+            <div
+              style={{
+                fontSize: isMobile ? 12 : 18,
+                lineHeight: 1.05,
+                fontWeight: 950,
+                letterSpacing: 0.3,
+                textAlign: "center",
+                wordBreak: "normal",
+                    overflowWrap: "normal",
+                    whiteSpace: "normal",
+              }}
+            >
+              {displayName}
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "grid",
+            placeItems: "center",
+            padding: isMobile ? 8 : 14,
+            borderRadius: isMobile ? 16 : 22,
+            backfaceVisibility: "hidden",
+            WebkitBackfaceVisibility: "hidden",
+            transform: "rotateY(180deg)",
+            background: isImpostor
+              ? "linear-gradient(145deg, #020617 0%, #7f1d1d 55%, #dc2626 100%)"
+              : "linear-gradient(145deg, #fff7ed 0%, #fed7aa 55%, #fdba74 100%)",
+            color: isImpostor ? "#fee2e2" : "#431407",
+            border: isImpostor ? "1px solid rgba(248, 113, 113, 0.7)" : "1px solid rgba(251, 146, 60, 0.56)",
+            boxShadow: "0 10px 24px rgba(127, 29, 29, 0.35)",
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ display: "grid", gap: isMobile ? 6 : 8, justifyItems: "center", textAlign: "center", minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: isMobile ? 13 : 16,
+                color: isImpostor ? "#fca5a5" : "#9a3412",
+                fontWeight: 900,
+                letterSpacing: 1,
+                textTransform: "uppercase",
+              }}
+            >
+              {isImpostor ? "Impostor" : "Your word"}
+            </div>
+            <div
+              style={{
+                fontSize: isMobile ? 15 : 24,
+                lineHeight: 1.05,
+                fontWeight: 950,
+                wordBreak: "normal",
+                    overflowWrap: "normal",
+                    whiteSpace: "normal",
+              }}
+            >
+              {assignment.word}
+            </div>
+            {isImpostor && assignment.hint && (
+              <div
+                style={{
+                  fontSize: isMobile ? 11 : 15,
+                  fontWeight: 800,
+                  opacity: 0.9,
+                  wordBreak: "normal",
+                    overflowWrap: "normal",
+                    whiteSpace: "normal",
+                }}
+              >
+                Hint: {assignment.hint}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
 export default function App() {
   const [playerName, setPlayerName] = useState("");
   const [roomName, setRoomName] = useState("");
@@ -799,6 +993,8 @@ export default function App() {
   const [round, setRound] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
+  const [iradMode, setIradMode] = useState(false);
+  const [iradHeldPlayer, setIradHeldPlayer] = useState(null);
   const [showFinalRevealScreen, setShowFinalRevealScreen] = useState(false);
   const [showFinalResults, setShowFinalResults] = useState(false);
   const [competitionMode, setCompetitionMode] = useState(false);
@@ -815,6 +1011,8 @@ export default function App() {
 
   const isMobile = windowWidth < 768;
   const currentAssignment = round?.assignments?.[currentIndex] ?? null;
+  const iradAssignments = round?.assignments ?? [];
+  const iradNeedsScroll = iradMode && iradAssignments.length > 8;
   const activePlayersForRound = players.filter((player) => !frozenPlayers.includes(player));
   const canStart = activePlayersForRound.length >= 3;
   const maxImpostorCount = Math.max(1, Math.min(3, activePlayersForRound.length - 1));
@@ -827,9 +1025,14 @@ export default function App() {
     settings.theme === "characters"
       ? CHARACTER_POOL_OPTIONS.find((option) => option.value === settings.pool)?.label ?? "All"
       : PLACES_OBJECTS_POOL_OPTIONS.find((option) => option.value === settings.pool)?.label ?? "All";
-  const pageTitle = settings.theme === "places_objects" ? "Impostor: Places & Objects" : "Impostor: Famous People";
-  const pageSubtitle =
-    settings.theme === "places_objects"
+  const pageTitle = iradMode
+    ? "IRAD MODE 🔥"
+    : settings.theme === "places_objects"
+      ? "Impostor: Places & Objects"
+      : "Impostor: Famous People";
+  const pageSubtitle = iradMode
+    ? "Hell-style Places & Objects mode. Hold a player card to peek, release to hide it again."
+    : settings.theme === "places_objects"
       ? "One-word English hints, a clean theme selector, separate pools for places or objects, and room memory per pool."
       : "One-word English hints, adjustable difficulty, editable player names, room memory, and optional competition mode.";
 
@@ -840,6 +1043,16 @@ export default function App() {
       return a[0].localeCompare(b[0]);
     });
   }, [scores]);
+
+
+  useEffect(() => {
+    if (!iradMode) return;
+
+    setSettings((prev) => {
+      if (prev.theme === "places_objects") return prev;
+      return { ...prev, theme: "places_objects", pool: "all" };
+    });
+  }, [iradMode]);
 
   useEffect(() => {
     setUsedCharacters(loadRoomHistory(roomName, settings.theme, settings.pool));
@@ -864,6 +1077,7 @@ export default function App() {
     setShowFinalResults(false);
     setRoundScored(false);
     setWinnerSelection([]);
+    setIradHeldPlayer(null);
   }, [settings.theme]);
 
   useEffect(() => {
@@ -875,6 +1089,28 @@ export default function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+
+
+  function toggleIradMode() {
+    setIradMode((prev) => {
+      const nextMode = !prev;
+
+      setRound(null);
+      setCurrentIndex(0);
+      setRevealed(false);
+      setIradHeldPlayer(null);
+      setShowFinalRevealScreen(false);
+      setShowFinalResults(false);
+      setRoundScored(false);
+      setWinnerSelection([]);
+
+      if (nextMode) {
+        setSettings((prevSettings) => ({ ...prevSettings, theme: "places_objects", pool: "all" }));
+      }
+
+      return nextMode;
+    });
+  }
 
   function toggleFreezePlayer(player) {
     const alreadyFrozen = frozenPlayers.includes(player);
@@ -899,6 +1135,7 @@ export default function App() {
         setShowFinalResults(false);
         setRoundScored(false);
         setWinnerSelection([]);
+        setIradHeldPlayer(null);
         return;
       }
 
@@ -909,6 +1146,7 @@ export default function App() {
         if (removedIndex === -1) return prevRound;
 
         const nextAssignments = prevRound.assignments.filter((assignment) => assignment.player !== player);
+        setIradHeldPlayer((heldPlayer) => (heldPlayer === player ? null : heldPlayer));
 
         setCurrentIndex((prevIndex) => {
           if (nextAssignments.length === 0) return 0;
@@ -1010,6 +1248,7 @@ export default function App() {
     setShowFinalResults(false);
     setRoundScored(false);
     setWinnerSelection([]);
+    setIradHeldPlayer(null);
     setImpostorCounts(nextRound.nextImpostorCounts);
     setImpostorHistory(nextRound.nextImpostorHistory);
 
@@ -1040,6 +1279,7 @@ export default function App() {
     setShowFinalResults(false);
     setRoundScored(false);
     setWinnerSelection([]);
+    setIradHeldPlayer(null);
     setImpostorCounts(nextRound.nextImpostorCounts);
     setImpostorHistory(nextRound.nextImpostorHistory);
 
@@ -1085,6 +1325,14 @@ export default function App() {
 
   function endHold() {
     setRevealed(false);
+  }
+
+  function beginIradHold(player) {
+    setIradHeldPlayer(player);
+  }
+
+  function endIradHold() {
+    setIradHeldPlayer(null);
   }
 
   function toggleCompetitionMode() {
@@ -1152,10 +1400,9 @@ export default function App() {
     <div
       style={{
         minHeight: "100vh",
-        background:
-          "radial-gradient(circle at top left, rgba(168, 85, 247, 0.65), transparent 25%), radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.55), transparent 25%), linear-gradient(135deg, #eef2ff 0%, #f5f3ff 35%, #eff6ff 100%)",
+        background: iradMode ? "radial-gradient(circle at 15% 12%, rgba(255, 184, 28, 0.32), transparent 22%), radial-gradient(circle at 88% 18%, rgba(239, 68, 68, 0.34), transparent 25%), radial-gradient(circle at 50% 105%, rgba(249, 115, 22, 0.42), transparent 34%), linear-gradient(145deg, #090202 0%, #220404 34%, #451008 62%, #100404 100%)" : "radial-gradient(circle at top left, rgba(168, 85, 247, 0.65), transparent 25%), radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.55), transparent 25%), linear-gradient(135deg, #eef2ff 0%, #f5f3ff 35%, #eff6ff 100%)",
         fontFamily: "Inter, Arial, sans-serif",
-        color: "#111827",
+        color: iradMode ? "#fff7ed" : "#111827",
         padding: isMobile ? 12 : 24,
       }}
     >
@@ -1170,12 +1417,12 @@ export default function App() {
       >
         <div
           style={{
-            background: "rgba(255,255,255,0.68)",
+            background: iradMode ? "rgba(17, 24, 39, 0.74)" : "rgba(255,255,255,0.68)",
             backdropFilter: "blur(16px)",
             borderRadius: isMobile ? 22 : 30,
             padding: isMobile ? 18 : 28,
-            border: "1px solid rgba(255,255,255,0.7)",
-            boxShadow: "0 18px 40px rgba(76, 29, 149, 0.14)",
+            border: iradMode ? "1px solid rgba(251, 146, 60, 0.34)" : "1px solid rgba(255,255,255,0.7)",
+            boxShadow: iradMode ? "0 18px 48px rgba(0,0,0,0.32)" : "0 18px 40px rgba(76, 29, 149, 0.14)",
           }}
         >
           <div
@@ -1183,7 +1430,7 @@ export default function App() {
               fontSize: isMobile ? 28 : 36,
               fontWeight: 900,
               marginBottom: 10,
-              color: "#172554",
+              color: iradMode ? "#fed7aa" : "#172554",
               lineHeight: 1.05,
               textAlign: "center",
             }}
@@ -1193,7 +1440,7 @@ export default function App() {
 
           <div
             style={{
-              color: "#475569",
+              color: iradMode ? "#fdba74" : "#475569",
               marginBottom: 28,
               fontSize: isMobile ? 15 : 17,
               lineHeight: 1.5,
@@ -1202,6 +1449,27 @@ export default function App() {
           >
             {pageSubtitle}
           </div>
+
+          <button
+            onClick={toggleIradMode}
+            style={{
+              width: "100%",
+              marginBottom: 16,
+              padding: isMobile ? "14px 18px" : "16px 22px",
+              borderRadius: 20,
+              border: iradMode ? "1px solid rgba(250, 204, 21, 0.45)" : "1px solid rgba(239, 68, 68, 0.25)",
+              background: iradMode
+                ? "linear-gradient(135deg, #7f1d1d 0%, #ea580c 55%, #facc15 100%)"
+                : "linear-gradient(135deg, #111827 0%, #7f1d1d 55%, #ea580c 100%)",
+              color: "white",
+              cursor: "pointer",
+              fontWeight: 950,
+              fontSize: isMobile ? 16 : 18,
+              boxShadow: iradMode ? "0 14px 30px rgba(234, 88, 12, 0.34)" : "0 12px 26px rgba(127, 29, 29, 0.28)",
+            }}
+          >
+            {iradMode ? "IRAD MODE ON 🔥" : "IRAD MODE 🔥"}
+          </button>
 
           <div style={{ display: "grid", gap: 16, marginBottom: 26 }}>
             <label style={{ display: "grid", gap: 8 }}>
@@ -1245,7 +1513,11 @@ export default function App() {
                 </span>
                 <select
                   value={settings.theme}
-                  onChange={(e) => setSettings((prev) => ({ ...prev, theme: e.target.value }))}
+                  onChange={(e) => {
+                    if (iradMode) return;
+                    setSettings((prev) => ({ ...prev, theme: e.target.value }));
+                  }}
+                  disabled={iradMode}
                   style={{
                     width: "100%",
                     minWidth: 0,
@@ -1258,7 +1530,7 @@ export default function App() {
                     color: "#172554",
                     WebkitTextFillColor: "#172554",
                     fontWeight: 700,
-                    cursor: "pointer",
+                    cursor: iradMode ? "not-allowed" : "pointer",
                     boxSizing: "border-box",
                   }}
                 >
@@ -1537,7 +1809,7 @@ export default function App() {
                       }}
                       title="Click to edit"
                     >
-                      {player}
+                      {iradMode ? getIradDisplayName(player) : player}
                     </button>
                   )}
                   <button
@@ -1715,12 +1987,12 @@ export default function App() {
 
         <div
           style={{
-            background: "rgba(255,255,255,0.68)",
+            background: iradMode ? "rgba(17, 24, 39, 0.74)" : "rgba(255,255,255,0.68)",
             backdropFilter: "blur(16px)",
             borderRadius: isMobile ? 22 : 30,
             padding: isMobile ? 18 : 28,
-            border: "1px solid rgba(255,255,255,0.7)",
-            boxShadow: "0 18px 40px rgba(37, 99, 235, 0.14)",
+            border: iradMode ? "1px solid rgba(251, 146, 60, 0.34)" : "1px solid rgba(255,255,255,0.7)",
+            boxShadow: iradMode ? "0 18px 48px rgba(0,0,0,0.32)" : "0 18px 40px rgba(37, 99, 235, 0.14)",
           }}
         >
           <div
@@ -1732,16 +2004,101 @@ export default function App() {
               textAlign: "center",
             }}
           >
-            Private reveal
+            {iradMode ? "Hell cards" : "Private reveal"}
           </div>
 
           {!round && (
-            <div style={{ color: "#475569", fontSize: isMobile ? 16 : 18, textAlign: "center" }}>
-              Start a round, then pass the device between players.
+            <div style={{ color: iradMode ? "#fdba74" : "#475569", fontSize: isMobile ? 16 : 18, textAlign: "center" }}>
+              {iradMode ? "Start a round, then each player holds their own card to peek." : "Start a round, then pass the device between players."}
             </div>
           )}
 
-          {round && !finished && !showFinalRevealScreen && currentAssignment && (
+
+
+          {iradMode && round && !finished && !showFinalRevealScreen && (
+            <div style={{ display: "grid", gap: isMobile ? 12 : 16 }}>
+              <div
+                style={{
+                  background: "rgba(69, 10, 10, 0.72)",
+                  borderRadius: 20,
+                  padding: isMobile ? 10 : 14,
+                  border: "1px solid rgba(251, 146, 60, 0.28)",
+                  color: "#fed7aa",
+                  textAlign: "center",
+                  fontWeight: 800,
+                  fontSize: isMobile ? 12 : 15,
+                }}
+              >
+                Hold your card to reveal. Release to hide. {iradAssignments.length > 8 ? "Scroll for more players." : "Up to 8 cards fit on one phone screen."}
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: getIradGridColumns(iradAssignments.length, isMobile),
+                  gap: isMobile ? 8 : 12,
+                  maxHeight: iradNeedsScroll ? (isMobile ? "62vh" : "68vh") : "none",
+                  overflowY: iradNeedsScroll ? "auto" : "visible",
+                  paddingRight: iradNeedsScroll ? 4 : 0,
+                }}
+              >
+                {iradAssignments.map((assignment) => (
+                  <IradRevealCard
+                    key={getIradDisplayName(assignment.player)}
+                    assignment={assignment}
+                    held={iradHeldPlayer === assignment.player}
+                    onHoldStart={beginIradHold}
+                    onHoldEnd={endIradHold}
+                    isMobile={isMobile}
+                    totalCards={iradAssignments.length}
+                  />
+                ))}
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                  gap: 10,
+                }}
+              >
+                <button
+                  onClick={skipRound}
+                  style={{
+                    padding: "13px 16px",
+                    borderRadius: 16,
+                    border: 0,
+                    background: "linear-gradient(135deg, #f97316 0%, #dc2626 100%)",
+                    color: "white",
+                    cursor: "pointer",
+                    fontWeight: 900,
+                  }}
+                >
+                  Skip round
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIradHeldPlayer(null);
+                    setShowFinalResults(true);
+                  }}
+                  style={{
+                    padding: "13px 16px",
+                    borderRadius: 16,
+                    border: 0,
+                    background: "linear-gradient(135deg, #111827 0%, #7f1d1d 100%)",
+                    color: "white",
+                    cursor: "pointer",
+                    fontWeight: 900,
+                  }}
+                >
+                  Reveal results
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!iradMode && round && !finished && !showFinalRevealScreen && currentAssignment && (
             <div style={{ display: "grid", gap: 18 }}>
               <div
                 style={{
@@ -1764,7 +2121,7 @@ export default function App() {
                     lineHeight: 1.05,
                   }}
                 >
-                  {currentAssignment.player}
+                  {getIradDisplayName(currentAssignment.player)}
                 </div>
                 <div style={{ color: "#64748b", marginTop: 8 }}>Only this player should look at the screen.</div>
               </div>
@@ -1850,7 +2207,7 @@ export default function App() {
 
                       {settings.impostorGetsHint && currentAssignment.hint && (
                         <div draggable={false} style={{ marginTop: 12, fontSize: isMobile ? 16 : 18, fontWeight: 700, ...NO_SELECTION_STYLE }}>
-                          Hint: {currentAssignment.hint}
+                          Hint: {currentAssignment.isImpostor ? currentAssignment.hint : ""}
                         </div>
                       )}
                     </>
@@ -1908,8 +2265,8 @@ export default function App() {
             </div>
           )}
 
-          {showFinalRevealScreen && !showFinalResults && round && (
-            <div style={{ textAlign: "center", marginTop: 20 }}>
+          {!iradMode && showFinalRevealScreen && !showFinalResults && round && (
+            <div style={{ textAlign: "center", marginTop: 20, color: iradMode ? "#ffedd5" : "inherit" }}>
               <div style={{ fontSize: isMobile ? 24 : 28, fontWeight: 900, marginBottom: 12 }}>
                 Everyone is ready
               </div>
