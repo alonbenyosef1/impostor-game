@@ -540,7 +540,7 @@ const MOBILE_TAP_STYLE = {
 };
 
 const CREWMATES_WINNER_KEY = "__CREWMATES__";
-const ONLINE_APP_VERSION = "1.0.5";
+const ONLINE_APP_VERSION = "1.0.6";
 
 function pickRandom(array) {
   return array[Math.floor(Math.random() * array.length)];
@@ -996,6 +996,8 @@ const ONLINE_SUSPECT_VOTE_SECONDS = 180;
 const ONLINE_IMPOSTOR_GUESS_SECONDS = 120;
 const ONLINE_HOST_OVERRIDE_SECONDS = 10;
 const ONLINE_REQUEST_TIMEOUT_MS = 8000;
+const ONLINE_INACTIVE_PLAYER_MS = 45000;
+const ONLINE_ROOM_IDLE_DELETE_MS = 6 * 60 * 60 * 1000;
 
 function getOnlineClientId() {
   if (typeof window === "undefined") return `client-${Math.random().toString(36).slice(2)}`;
@@ -1058,6 +1060,88 @@ async function firebasePatch(baseUrl, roomId, value) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(value),
   });
+}
+
+async function firebaseDelete(baseUrl, roomId) {
+  return onlineFetchJson(makeOnlineUrl(baseUrl, roomId), {
+    method: "DELETE",
+  });
+}
+
+function getOnlineActivePlayers(room, now = Date.now()) {
+  return getOnlinePlayers(room).filter((player) => {
+    const lastSeen = Number(player?.lastSeen || player?.joinedAt || 0);
+    return lastSeen && now - lastSeen <= ONLINE_INACTIVE_PLAYER_MS;
+  });
+}
+
+function isOnlineRoomIdle(room, now = Date.now()) {
+  if (!room || typeof room !== "object") return false;
+  const updatedAt = Number(room.updatedAt || room.createdAt || 0);
+  return Boolean(updatedAt && now - updatedAt >= ONLINE_ROOM_IDLE_DELETE_MS);
+}
+
+function shouldDeleteOnlineRoom(room, now = Date.now()) {
+  if (!room || typeof room !== "object") return false;
+  if (isOnlineRoomIdle(room, now)) return true;
+  const playersObject = room.players || {};
+  const hasPlayers = Object.keys(playersObject).length > 0;
+  if (!hasPlayers) return true;
+  return getOnlineActivePlayers(room, now).length === 0;
+}
+
+function buildRoomWithoutPlayer(room, clientIdToRemove, now = Date.now()) {
+  if (!room || typeof room !== "object") return null;
+  const nextPlayers = { ...(room.players || {}) };
+  delete nextPlayers[clientIdToRemove];
+
+  const activePlayers = Object.values(nextPlayers)
+    .filter((player) => {
+      const lastSeen = Number(player?.lastSeen || player?.joinedAt || 0);
+      return lastSeen && now - lastSeen <= ONLINE_INACTIVE_PLAYER_MS;
+    })
+    .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
+
+  if (Object.keys(nextPlayers).length === 0 || activePlayers.length === 0) return null;
+
+  const hostStillActive = activePlayers.some((player) => player.id === room.hostId);
+  const nextHostId = hostStillActive ? room.hostId : activePlayers[0].id;
+
+  return {
+    ...room,
+    hostId: nextHostId,
+    players: nextPlayers,
+    updatedAt: now,
+  };
+}
+
+function pruneInactiveOnlinePlayers(room, currentClientId, now = Date.now()) {
+  if (!room || typeof room !== "object") return room;
+  const playersObject = room.players || {};
+  const activePlayers = Object.values(playersObject)
+    .filter((player) => {
+      if (player.id === currentClientId) return true;
+      const lastSeen = Number(player?.lastSeen || player?.joinedAt || 0);
+      return lastSeen && now - lastSeen <= ONLINE_INACTIVE_PLAYER_MS;
+    })
+    .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
+
+  if (activePlayers.length === Object.keys(playersObject).length) return room;
+
+  const nextPlayers = {};
+  activePlayers.forEach((player) => {
+    nextPlayers[player.id] = player;
+  });
+
+  const hostStillActive = activePlayers.some((player) => player.id === room.hostId);
+  const nextHostId = hostStillActive ? room.hostId : activePlayers[0]?.id || room.hostId;
+
+  return {
+    ...room,
+    hostId: nextHostId,
+    players: nextPlayers,
+    updatedAt: now,
+  };
 }
 
 function normalizeOnlineRoom(rawRoom, fallbackRoomId, clientId, playerName) {
@@ -1340,16 +1424,29 @@ function OnlineMode({ onExit, isMobile }) {
       if (typeof window !== "undefined") {
         window.localStorage.setItem(ONLINE_NAME_KEY, cleanName);
       }
-      const existing = await firebaseGet(cleanUrl, cleanRoomId);
+
+      let existing = await firebaseGet(cleanUrl, cleanRoomId);
+      const joinNow = Date.now();
+
+      if (shouldDeleteOnlineRoom(existing, joinNow)) {
+        await firebaseDelete(cleanUrl, cleanRoomId).catch(() => {});
+        existing = null;
+      }
+
       const nextRoom = normalizeOnlineRoom(existing, cleanRoomId, clientId, cleanName);
-      const usedNames = getOnlinePlayers(nextRoom).filter((player) => player.id !== clientId).map((player) => player.name);
+      const prunedRoom = pruneInactiveOnlinePlayers(nextRoom, clientId, joinNow);
+      const usedNames = getOnlinePlayers(prunedRoom).filter((player) => player.id !== clientId).map((player) => player.name);
       const uniqueName = usedNames.includes(cleanName) ? `${cleanName}-${clientId.slice(-4)}` : cleanName;
-      nextRoom.players = {
-        ...(nextRoom.players || {}),
-        [clientId]: { id: clientId, name: uniqueName, joinedAt: nextRoom.players?.[clientId]?.joinedAt || Date.now(), lastSeen: Date.now() },
+      const updatedRoom = {
+        ...prunedRoom,
+        players: {
+          ...(prunedRoom.players || {}),
+          [clientId]: { id: clientId, name: uniqueName, joinedAt: prunedRoom.players?.[clientId]?.joinedAt || joinNow, lastSeen: joinNow },
+        },
+        updatedAt: joinNow,
       };
-      await firebasePut(cleanUrl, cleanRoomId, { ...nextRoom, updatedAt: Date.now() });
-      setRoom(nextRoom);
+      await firebasePut(cleanUrl, cleanRoomId, updatedRoom);
+      setRoom(updatedRoom);
       setRoomId(cleanRoomId);
       setJoined(true);
     } catch (err) {
@@ -1365,8 +1462,29 @@ function OnlineMode({ onExit, isMobile }) {
     let cancelled = false;
     const interval = window.setInterval(async () => {
       try {
-        const nextRoom = await firebaseGet(firebaseUrl.replace(/\/$/, ""), room.id);
-        if (!cancelled && nextRoom) setRoom(nextRoom);
+        const cleanUrl = firebaseUrl.replace(/\/$/, "");
+        const nextRoom = await firebaseGet(cleanUrl, room.id);
+        if (cancelled) return;
+
+        const pollNow = Date.now();
+        if (!nextRoom || shouldDeleteOnlineRoom(nextRoom, pollNow)) {
+          await firebaseDelete(cleanUrl, room.id).catch(() => {});
+          if (!cancelled) {
+            setRoom(null);
+            setJoined(false);
+            setError("");
+          }
+          return;
+        }
+
+        const prunedRoom = pruneInactiveOnlinePlayers(nextRoom, clientId, pollNow);
+        if (JSON.stringify(prunedRoom.players || {}) !== JSON.stringify(nextRoom.players || {}) || prunedRoom.hostId !== nextRoom.hostId) {
+          await firebasePut(cleanUrl, room.id, prunedRoom).catch(() => {});
+          if (!cancelled) setRoom(prunedRoom);
+          return;
+        }
+
+        setRoom(nextRoom);
       } catch {
         if (!cancelled) setError("יש בעיית סנכרון רגעית מול החדר.");
       }
@@ -1375,7 +1493,7 @@ function OnlineMode({ onExit, isMobile }) {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [joined, firebaseUrl, room?.id]);
+  }, [joined, firebaseUrl, room?.id, clientId, onlineUnavailable]);
 
   useEffect(() => {
     if (!joined || !room?.id || !firebaseUrl || onlineUnavailable) return;
@@ -1388,6 +1506,34 @@ function OnlineMode({ onExit, isMobile }) {
     return () => window.clearInterval(interval);
   }, [joined, firebaseUrl, room?.id, clientId, onlineUnavailable]);
 
+
+  useEffect(() => {
+    if (!joined || !room?.id || !firebaseUrl || onlineUnavailable) return;
+
+    const handlePageHide = () => {
+      try {
+        const cleanUrl = firebaseUrl.replace(/\/$/, "");
+        const nextRoom = buildRoomWithoutPlayer(room, clientId, Date.now());
+        const url = makeOnlineUrl(cleanUrl, room.id);
+        if (!nextRoom) {
+          fetch(url, { method: "DELETE", keepalive: true }).catch(() => {});
+          return;
+        }
+        fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(nextRoom),
+          keepalive: true,
+        }).catch(() => {});
+      } catch {
+        // Best-effort cleanup only. The regular stale-room cleanup will handle failures.
+      }
+    };
+
+    window.addEventListener("pagehide", handlePageHide);
+    return () => window.removeEventListener("pagehide", handlePageHide);
+  }, [joined, firebaseUrl, room, clientId, onlineUnavailable]);
+
   async function copyInviteLink() {
     try {
       await navigator.clipboard?.writeText(inviteLink);
@@ -1396,6 +1542,42 @@ function OnlineMode({ onExit, isMobile }) {
     } catch {
       setCopyStatus("Copy failed");
       window.setTimeout(() => setCopyStatus(""), 2200);
+    }
+  }
+
+  function clearOnlineUrlRoomParams() {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    params.delete("online");
+    params.delete("room");
+    const nextQuery = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`);
+  }
+
+  async function leaveOnlineRoom({ exitToOffline = false } = {}) {
+    const cleanUrl = firebaseUrl.replace(/\/$/, "");
+    const currentRoomId = room?.id;
+    setLoading(true);
+    try {
+      if (cleanUrl && currentRoomId && room) {
+        const liveRoom = await firebaseGet(cleanUrl, currentRoomId).catch(() => room);
+        const nextRoom = buildRoomWithoutPlayer(liveRoom || room, clientId, Date.now());
+        if (nextRoom) {
+          await firebasePut(cleanUrl, currentRoomId, nextRoom);
+        } else {
+          await firebaseDelete(cleanUrl, currentRoomId).catch(() => {});
+        }
+      }
+    } finally {
+      setRoom(null);
+      setJoined(false);
+      setError("");
+      setLocalDecisionVote("");
+      setLocalSuspectVote("");
+      setVoteFeedback({ decision: "", suspect: "" });
+      clearOnlineUrlRoomParams();
+      setLoading(false);
+      if (exitToOffline) onExit();
     }
   }
 
@@ -1689,7 +1871,26 @@ function OnlineMode({ onExit, isMobile }) {
             <h1 style={{ margin: "4px 0", fontSize: isMobile ? 30 : 44 }}>Impostor Online</h1>
             <div style={{ color: "#475569", fontWeight: 700 }}>Online affects only the regular mode. IRAD mode stays untouched.</div>
           </div>
-          <button onClick={onExit} style={{ ...buttonStyle, background: "#111827" }}>Back offline</button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: isMobile ? "stretch" : "flex-end" }}>
+            {joined && room && (
+              <button
+                type="button"
+                onClick={() => leaveOnlineRoom()}
+                disabled={loading}
+                style={{ ...buttonStyle, background: "#dc2626", opacity: loading ? 0.65 : 1, width: isMobile ? "100%" : "auto" }}
+              >
+                Leave room
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => (joined && room ? leaveOnlineRoom({ exitToOffline: true }) : onExit())}
+              disabled={loading}
+              style={{ ...buttonStyle, background: "#111827", opacity: loading ? 0.65 : 1, width: isMobile ? "100%" : "auto" }}
+            >
+              Back offline
+            </button>
+          </div>
         </div>
 
         {onlineUnavailable && (
@@ -1829,7 +2030,7 @@ function OnlineMode({ onExit, isMobile }) {
                     This device: {me?.name || name || "unknown"}
                   </div>
 
-                  {isMyTurn && (
+                  {isMyTurn && !isMobile && (
                     <div style={{
                       padding: isMobile ? "12px 14px" : "14px 18px",
                       borderRadius: 18,
