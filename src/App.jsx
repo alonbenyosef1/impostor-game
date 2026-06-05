@@ -540,7 +540,7 @@ const MOBILE_TAP_STYLE = {
 };
 
 const CREWMATES_WINNER_KEY = "__CREWMATES__";
-const ONLINE_APP_VERSION = "1.0.6";
+const ONLINE_APP_VERSION = "1.0.8";
 
 function pickRandom(array) {
   return array[Math.floor(Math.random() * array.length)];
@@ -1195,6 +1195,17 @@ function getVoteWinner(votes = {}, fallback = "continue") {
   return entries[0][0];
 }
 
+function getSuspectVoteWinner(votes = {}) {
+  const counts = countVotes(votes);
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) return "";
+
+  // In impostor voting, no clear majority means the impostor wins.
+  // Returning an empty string for a tie makes the resolution explicit.
+  if (entries.length > 1 && entries[0][1] === entries[1][1]) return "";
+  return entries[0][0];
+}
+
 function sanitizeOneWordClue(value) {
   return String(value || "").trim().replace(/\s+/g, "");
 }
@@ -1264,12 +1275,59 @@ function OnlineMode({ onExit, isMobile }) {
   const secondsLeft = room?.phaseEndsAt ? Math.max(0, Math.ceil((room.phaseEndsAt - now) / 1000)) : 0;
   const inviteLink = typeof window === "undefined" ? "" : `${window.location.origin}${window.location.pathname}?online=1&room=${room?.id || roomId}`;
   const canStartOnline = activeOnlinePlayerNames.length >= 2;
+  const joinedAfterRoundStarted = Boolean(joined && room?.phase !== "lobby" && room?.phase !== "game_over" && !myAssignment);
   const serverDecisionVote = room?.decisionVotes?.[clientId] || "";
   const serverSuspectVote = room?.suspectVotes?.[clientId] || "";
   const myDecisionVote = localDecisionVote || serverDecisionVote;
   const mySuspectVote = localSuspectVote || serverSuspectVote;
   const visibleDecisionVote = voteFeedback.decision || myDecisionVote;
   const visibleSuspectVote = voteFeedback.suspect || mySuspectVote;
+
+  function getCurrentRoundVoteTotal() {
+    return Math.max(0, roundPlayerNames.length);
+  }
+
+  function didEveryoneVote(votes) {
+    const total = getCurrentRoundVoteTotal();
+    return total > 0 && Object.keys(votes || {}).length >= total;
+  }
+
+  function getDecisionResolutionPatch(nextDecisionVotes) {
+    const result = getVoteWinner(nextDecisionVotes, "continue");
+    if (result === "guess") {
+      return {
+        phase: "suspect_vote",
+        phaseEndsAt: Date.now() + ONLINE_SUSPECT_VOTE_SECONDS * 1000,
+        suspectVotes: {},
+      };
+    }
+
+    return {
+      phase: "clue",
+      turnIndex: 0,
+      phaseEndsAt: Date.now() + ONLINE_TURN_SECONDS * 1000,
+      decisionVotes: {},
+    };
+  }
+
+  function getSuspectResolutionPatch(nextSuspectVotes) {
+    const suspect = getSuspectVoteWinner(nextSuspectVotes);
+    const correct = Boolean(suspect && room?.round?.impostorPlayers?.includes(suspect));
+
+    return {
+      phase: correct ? "impostor_guess" : "game_over",
+      phaseEndsAt: correct ? Date.now() + ONLINE_IMPOSTOR_GUESS_SECONDS * 1000 : null,
+      suspectVotes: nextSuspectVotes,
+      winner: correct
+        ? null
+        : {
+            side: "impostor",
+            reason: suspect
+              ? `Wrong guess: ${suspect}.`
+              : "No clear majority / tie in the impostor vote.",
+          },
+    };
+  }
 
   function markOnlineUnavailable(message) {
     setOnlineUnavailable(true);
@@ -1586,11 +1644,29 @@ function OnlineMode({ onExit, isMobile }) {
     const nextSettings = { ...onlineSettings, ...patch };
     if (nextSettings.theme === "characters" && !["all", "global", "israel"].includes(nextSettings.pool)) nextSettings.pool = "all";
     if (nextSettings.theme === "places_objects" && !["all", "place", "object"].includes(nextSettings.pool)) nextSettings.pool = "all";
-    await patchRoom({ settings: nextSettings });
+
+    const nextPatch = { settings: nextSettings };
+
+    // Difficulty / hint visibility can safely affect the current round too.
+    // Theme, pool, impostor count and smart impostor are used when the next round is created.
+    if (room?.round && (Object.prototype.hasOwnProperty.call(patch, "difficulty") || Object.prototype.hasOwnProperty.call(patch, "impostorGetsHint"))) {
+      const selectedHint = getHintByDifficulty(room.round.character?.hints || [], nextSettings.difficulty);
+      nextPatch.round = {
+        ...room.round,
+        selectedHint,
+        assignments: (room.round.assignments || []).map((assignment) =>
+          assignment.isImpostor
+            ? { ...assignment, hint: nextSettings.impostorGetsHint ? selectedHint : "" }
+            : assignment
+        ),
+      };
+    }
+
+    await patchRoom(nextPatch);
   }
 
   async function toggleOnlineFreeze(playerName) {
-    if (!isHost || room.phase !== "lobby") return;
+    if (!isHost) return;
     const current = room.frozenPlayers || [];
     const nextFrozen = current.includes(playerName)
       ? current.filter((name) => name !== playerName)
@@ -1630,6 +1706,11 @@ function OnlineMode({ onExit, isMobile }) {
     });
   }
 
+  async function skipOnlineRound() {
+    if (!isHost || !canStartOnline) return;
+    await startOnlineRound();
+  }
+
   async function submitClue() {
     if (!isMyTurn || !room?.round) return;
     const clue = sanitizeOneWordClue(clueText);
@@ -1657,7 +1738,11 @@ function OnlineMode({ onExit, isMobile }) {
   async function voteDecision(value) {
     markDecisionChoice(value);
     try {
-      await patchRoom({ decisionVotes: { ...(room.decisionVotes || {}), [clientId]: value } });
+      const nextDecisionVotes = { ...(room.decisionVotes || {}), [clientId]: value };
+      const nextPatch = didEveryoneVote(nextDecisionVotes)
+        ? { decisionVotes: nextDecisionVotes, ...getDecisionResolutionPatch(nextDecisionVotes) }
+        : { decisionVotes: nextDecisionVotes };
+      await patchRoom(nextPatch);
     } catch (err) {
       setLocalDecisionVote("");
       setVoteFeedback((prev) => ({ ...prev, decision: "" }));
@@ -1669,7 +1754,11 @@ function OnlineMode({ onExit, isMobile }) {
   async function voteSuspect(player) {
     markSuspectChoice(player);
     try {
-      await patchRoom({ suspectVotes: { ...(room.suspectVotes || {}), [clientId]: player } });
+      const nextSuspectVotes = { ...(room.suspectVotes || {}), [clientId]: player };
+      const nextPatch = didEveryoneVote(nextSuspectVotes)
+        ? getSuspectResolutionPatch(nextSuspectVotes)
+        : { suspectVotes: nextSuspectVotes };
+      await patchRoom(nextPatch);
     } catch (err) {
       setLocalSuspectVote("");
       setVoteFeedback((prev) => ({ ...prev, suspect: "" }));
@@ -1720,13 +1809,7 @@ function OnlineMode({ onExit, isMobile }) {
       }
     }
     if (room.phase === "suspect_vote") {
-      const suspect = getVoteWinner(room.suspectVotes, "");
-      const correct = Boolean(suspect && room.round?.impostorPlayers?.includes(suspect));
-      patchRoom({
-        phase: correct ? "impostor_guess" : "game_over",
-        phaseEndsAt: correct ? Date.now() + ONLINE_IMPOSTOR_GUESS_SECONDS * 1000 : null,
-        winner: correct ? null : { side: "impostor", reason: `Wrong guess: ${suspect || "no majority"}.` },
-      }).catch(() => {});
+      patchRoom(getSuspectResolutionPatch(room.suspectVotes || {})).catch(() => {});
     }
     if (room.phase === "impostor_guess") {
       patchRoom({ phase: "host_override", phaseEndsAt: Date.now() + ONLINE_HOST_OVERRIDE_SECONDS * 1000 }).catch(() => {});
@@ -1740,17 +1823,10 @@ function OnlineMode({ onExit, isMobile }) {
     if (!isHost || !room) return;
     const total = roundPlayerNames.length;
     if (room.phase === "decision" && total > 0 && Object.keys(room.decisionVotes || {}).length >= total) {
-      const result = getVoteWinner(room.decisionVotes, "continue");
-      patchRoom(result === "guess" ? { phase: "suspect_vote", phaseEndsAt: Date.now() + ONLINE_SUSPECT_VOTE_SECONDS * 1000, suspectVotes: {} } : { phase: "clue", turnIndex: 0, phaseEndsAt: Date.now() + ONLINE_TURN_SECONDS * 1000, decisionVotes: {} }).catch(() => {});
+      patchRoom(getDecisionResolutionPatch(room.decisionVotes || {})).catch(() => {});
     }
     if (room.phase === "suspect_vote" && total > 0 && Object.keys(room.suspectVotes || {}).length >= total) {
-      const suspect = getVoteWinner(room.suspectVotes, "");
-      const correct = Boolean(suspect && room.round?.impostorPlayers?.includes(suspect));
-      patchRoom({
-        phase: correct ? "impostor_guess" : "game_over",
-        phaseEndsAt: correct ? Date.now() + ONLINE_IMPOSTOR_GUESS_SECONDS * 1000 : null,
-        winner: correct ? null : { side: "impostor", reason: `Wrong guess: ${suspect || "no majority"}.` },
-      }).catch(() => {});
+      patchRoom(getSuspectResolutionPatch(room.suspectVotes || {})).catch(() => {});
     }
   }, [isHost, room?.decisionVotes, room?.suspectVotes, room?.phase, roundPlayerNames.length]);
 
@@ -1836,33 +1912,7 @@ function OnlineMode({ onExit, isMobile }) {
         </div>
       )}
 
-      {joined && room && isMyTurn && isMobile && (
-        <div
-          data-no-mobile-select="true"
-          style={{
-            position: "fixed",
-            top: "max(58px, calc(env(safe-area-inset-top) + 48px))",
-            left: "max(10px, env(safe-area-inset-left))",
-            right: "max(10px, env(safe-area-inset-right))",
-            zIndex: 2147483645,
-            padding: "13px 16px",
-            borderRadius: 18,
-            background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
-            border: "3px solid #ef4444",
-            color: "#991b1b",
-            fontWeight: 950,
-            fontSize: 26,
-            textAlign: "center",
-            letterSpacing: 1,
-            textTransform: "uppercase",
-            boxShadow: "0 16px 36px rgba(239, 68, 68, 0.30)",
-            pointerEvents: "none",
-            ...NO_SELECTION_STYLE,
-          }}
-        >
-          YOUR TURN
-        </div>
-      )}
+
 
       <div style={{ maxWidth: 1180, margin: "0 auto", display: "grid", gap: 16, paddingTop: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -1899,30 +1949,7 @@ function OnlineMode({ onExit, isMobile }) {
           </div>
         )}
 
-        {false && joined && room && isMyTurn && !isMobile && (
-          <div
-            data-no-mobile-select="true"
-            style={{
-              position: "sticky",
-              top: isMobile ? 8 : 12,
-              zIndex: 50,
-              padding: isMobile ? "14px 16px" : "16px 20px",
-              borderRadius: isMobile ? 18 : 22,
-              background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
-              border: "3px solid #ef4444",
-              color: "#991b1b",
-              fontWeight: 950,
-              fontSize: isMobile ? 26 : 30,
-              textAlign: "center",
-              letterSpacing: 1,
-              textTransform: "uppercase",
-              boxShadow: "0 16px 36px rgba(239, 68, 68, 0.26)",
-              ...NO_SELECTION_STYLE,
-            }}
-          >
-            YOUR TURN
-          </div>
-        )}
+
 
         {!joined && (
           <div style={{ ...panelStyle, display: "grid", gap: 12 }}>
@@ -1960,7 +1987,7 @@ function OnlineMode({ onExit, isMobile }) {
                     );
                   })}
                 </div>
-                {room.phase === "lobby" && isHost && isMobile && (
+                {isHost && isMobile && (
                   <div style={{ display: "grid", gap: 8, padding: 12, borderRadius: 16, background: "#f8fafc", border: "2px solid rgba(37, 99, 235, 0.18)" }}>
                     <div style={{ fontWeight: 950, color: "#172554" }}>Host quick controls - freeze players</div>
                     <div style={{ display: "grid", gap: 8 }}>
@@ -1981,7 +2008,7 @@ function OnlineMode({ onExit, isMobile }) {
                     </div>
                   </div>
                 )}
-                {room.phase === "lobby" && isHost && (
+                {isHost && (
                   <div style={{ display: "grid", gap: 10, padding: 12, borderRadius: 18, background: "rgba(248,250,252,0.9)", border: "1px solid rgba(148,163,184,0.25)" }}>
                     <div style={{ fontWeight: 950, color: "#172554" }}>Host game settings</div>
                     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))", gap: 8 }}>
@@ -2012,14 +2039,29 @@ function OnlineMode({ onExit, isMobile }) {
                         })}
                       </div>
                     </div>
-                    <div style={{ color: canStartOnline ? "#166534" : "#b91c1c", fontWeight: 800, fontSize: 13 }}>Active players: {activeOnlinePlayerNames.length}. Need at least 2.</div>
+                    <div style={{ color: canStartOnline ? "#166534" : "#b91c1c", fontWeight: 800, fontSize: 13 }}>Active players for next round: {activeOnlinePlayerNames.length}. Need at least 2.</div>
                   </div>
                 )}
                 {room.phase === "lobby" && isHost && <button onClick={startOnlineRound} disabled={!canStartOnline} style={{ ...buttonStyle, opacity: canStartOnline ? 1 : 0.55 }}>Start game from 2 players</button>}
                 {room.phase === "lobby" && !isHost && <div style={{ color: "#475569", fontWeight: 800 }}>Waiting for the host to start.</div>}
+                {isHost && room.phase !== "lobby" && room.phase !== "game_over" && (
+                  <button
+                    type="button"
+                    onClick={skipOnlineRound}
+                    disabled={!canStartOnline}
+                    style={{ ...buttonStyle, background: "linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%)", opacity: canStartOnline ? 1 : 0.55 }}
+                  >
+                    Skip round
+                  </button>
+                )}
+                {joinedAfterRoundStarted && (
+                  <div style={{ padding: 12, borderRadius: 16, background: "#fff7ed", color: "#9a3412", fontWeight: 900, border: "1px solid rgba(249, 115, 22, 0.25)" }}>
+                    You joined after this round started. You will enter the game in the next round.
+                  </div>
+                )}
               </div>
 
-              {room.phase !== "lobby" && myAssignment && (
+              {room.phase !== "lobby" && (myAssignment || room.phase === "game_over") && (
                 <div style={{ ...panelStyle, display: "grid", gap: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                     <div style={{ fontWeight: 950, color: "#172554" }}>{room.phase === "clue" ? `Turn: ${currentTurnPlayer}` : "Round decision"}</div>
@@ -2030,25 +2072,7 @@ function OnlineMode({ onExit, isMobile }) {
                     This device: {me?.name || name || "unknown"}
                   </div>
 
-                  {isMyTurn && !isMobile && (
-                    <div style={{
-                      padding: isMobile ? "12px 14px" : "14px 18px",
-                      borderRadius: 18,
-                      background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
-                      border: "2px solid #ef4444",
-                      color: "#991b1b",
-                      fontWeight: 950,
-                      fontSize: isMobile ? 24 : 28,
-                      textAlign: "center",
-                      letterSpacing: 0.8,
-                      textTransform: "uppercase",
-                      boxShadow: "0 12px 28px rgba(239, 68, 68, 0.22)",
-                      ...NO_SELECTION_STYLE,
-                    }}>
-                      YOUR TURN
-                    </div>
-                  )}
-
+                  {myAssignment && (
                   <button onPointerDown={() => setCardRevealed(true)} onPointerUp={() => setCardRevealed(false)} onPointerLeave={() => setCardRevealed(false)} onClick={() => setCardRevealed((prev) => !prev)} style={{ minHeight: 190, border: 0, borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", lineHeight: 1.15, background: cardRevealed ? (myAssignment.isImpostor ? "linear-gradient(145deg, #020617 0%, #7f1d1d 55%, #dc2626 100%)" : "linear-gradient(145deg, #dbeafe 0%, #bfdbfe 100%)") : "linear-gradient(145deg, #312e81 0%, #4f46e5 55%, #111827 100%)", color: cardRevealed ? (myAssignment.isImpostor ? "#fee2e2" : "#172554") : "white", fontWeight: 950, fontSize: 26, cursor: "pointer", ...NO_SELECTION_STYLE }}>
                     {cardRevealed ? (
                       <div>
@@ -2058,9 +2082,31 @@ function OnlineMode({ onExit, isMobile }) {
                       </div>
                     ) : "Hold / tap to reveal"}
                   </button>
+                  )}
 
                   {room.phase === "clue" && (
                     <div style={{ display: "grid", gap: 10 }}>
+                      {isMyTurn && (
+                        <div
+                          data-no-mobile-select="true"
+                          style={{
+                            padding: isMobile ? "12px 14px" : "14px 18px",
+                            borderRadius: 18,
+                            background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
+                            border: "2px solid #ef4444",
+                            color: "#991b1b",
+                            fontWeight: 950,
+                            fontSize: isMobile ? 24 : 28,
+                            textAlign: "center",
+                            letterSpacing: 0.8,
+                            textTransform: "uppercase",
+                            boxShadow: "0 12px 28px rgba(239, 68, 68, 0.22)",
+                            ...NO_SELECTION_STYLE,
+                          }}
+                        >
+                          YOUR TURN
+                        </div>
+                      )}
                       <div style={{ color: "#475569", fontWeight: 800 }}>Each player gives one-word clue. Spaces are blocked automatically.</div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <input disabled={!isMyTurn} style={inputStyle} value={clueText} onChange={(event) => setClueText(sanitizeOneWordClue(event.target.value))} placeholder={isMyTurn ? "One-word clue" : "Wait for your turn"} />
@@ -2100,7 +2146,7 @@ function OnlineMode({ onExit, isMobile }) {
                   {room.phase === "impostor_guess" && (
                     <div style={{ display: "grid", gap: 10 }}>
                       <div style={{ fontWeight: 950 }}>The impostor has 120 seconds to guess the word.</div>
-                      {myAssignment.isImpostor ? <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><input style={inputStyle} value={guessText} onChange={(event) => setGuessText(event.target.value)} placeholder="Guess the word exactly" /><button onClick={submitImpostorGuess} style={buttonStyle}>Guess</button></div> : <div style={{ color: "#475569", fontWeight: 800 }}>Waiting for the impostor.</div>}
+                      {myAssignment?.isImpostor ? <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><input style={inputStyle} value={guessText} onChange={(event) => setGuessText(event.target.value)} placeholder="Guess the word exactly" /><button onClick={submitImpostorGuess} style={buttonStyle}>Guess</button></div> : <div style={{ color: "#475569", fontWeight: 800 }}>Waiting for the impostor.</div>}
                     </div>
                   )}
 
@@ -2115,7 +2161,7 @@ function OnlineMode({ onExit, isMobile }) {
                     <div style={{ display: "grid", gap: 10, textAlign: "center" }}>
                       <div style={{ fontSize: 28, fontWeight: 950 }}>{room.winner?.side === "impostor" ? "Impostor wins" : "Crewmates win"}</div>
                       <div style={{ color: "#475569", fontWeight: 800 }}>{room.winner?.reason}</div>
-                      {isHost && <button onClick={startOnlineRound} style={buttonStyle}>New round</button>}
+                      {isHost && <button type="button" onClick={startOnlineRound} disabled={!canStartOnline} style={{ ...buttonStyle, opacity: canStartOnline ? 1 : 0.55 }}>New round</button>}
                     </div>
                   )}
                 </div>
@@ -2579,6 +2625,25 @@ export default function App() {
         padding: isMobile ? 12 : 24,
       }}
     >
+      <div
+        style={{
+          position: "fixed",
+          left: "max(8px, env(safe-area-inset-left))",
+          top: "max(8px, env(safe-area-inset-top))",
+          zIndex: 2147483647,
+          padding: "3px 7px",
+          borderRadius: 999,
+          background: "rgba(15, 23, 42, 0.92)",
+          color: "white",
+          fontSize: 11,
+          fontWeight: 900,
+          pointerEvents: "none",
+          ...NO_SELECTION_STYLE,
+        }}
+      >
+        v{ONLINE_APP_VERSION}
+      </div>
+
       <div
         style={{
           maxWidth: 1320,
