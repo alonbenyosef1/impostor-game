@@ -540,7 +540,7 @@ const MOBILE_TAP_STYLE = {
 };
 
 const CREWMATES_WINNER_KEY = "__CREWMATES__";
-const ONLINE_APP_VERSION = "1.0.11";
+const ONLINE_APP_VERSION = "1.0.13";
 
 function pickRandom(array) {
   return array[Math.floor(Math.random() * array.length)];
@@ -1245,6 +1245,197 @@ function normalizeOnlineIdentity(value) {
     .toLowerCase();
 }
 
+
+const OFFLINE_HELP_SECTIONS = [
+  {
+    title: "איך משחקים אופליין",
+    items: [
+      "כל שחקן בתורו מקבל קלף (העבירו בינכם את הפלאפון), לחיצה על הקלף תחשוף את הדמות למעט האימפוסטר שיקבל רמז במידה והוגדר לפי רמת הקושי על הדמות.",
+      "כל שחקן בתורו לפי סדר לבחירתכם ייתן רמז על הדמות הרמז צריך להיות מתוכנן כך שגם יוכלו להבין שאתה לא האימפוסטר אבל גם שהאימפוסטר לא יבין את הדמות.",
+      "האימפוסטר רשאי לתת את הרמז שהוא קיבל על המילה במידה וניתן בתור הרמז שלו.",
+    ],
+  },
+  {
+    title: "סיבובים והצבעות",
+    items: [
+      "לאחר שכל שחקן נתן רמז בסיום הסיבוב תוכלו לבחור האם להמשיך לעוד סיבוב או להצביע על מי האימפוסטר, אני ממליץ שלפחות עד 6 שחקנים כולל תעשו לפחות שני סיבובים לפני שמצביעים כדי שיהיה סיכוי גבוה יותר לאימפוסטר לנצח.",
+      "במידה ולא הצביעו על האימפוסטר, האימפוסטר ניצח, במידה ויש תיקו בהצבעות האימפוסטר ניצח, במידה ורוב ההצבעות על האימפוסטר תינתן לו ההזדמנות לנחש מי הדמות, אם הוא ניחש הוא ניצח, אם לא הצוות ינצח.",
+    ],
+  },
+  {
+    title: "מוד תחרות וניקוד",
+    items: [
+      "ניתן להפעיל מוד תחרות שניצחון של האימפוסטר שווה 3 נקודות בעוד שהפסד מקנה 1 לכל השאר.",
+      "כאשר משחקים במספר אימפוסטרים האימפוסטרים עדיין בקבוצה נפרדת אבל חלוקת הנקודות משתנה.",
+      "ההמלצה שלי היא שתצביעו כמספר האימפוסטרים פלוס אחד על אנשים.",
+    ],
+  },
+  {
+    title: "כלים וטיפים",
+    items: [
+      "מישהו הלך לשירותים? תקפיאו אותו מהמשחק, מישהו הרס את הסיבוב? לא רוצים לשחק עם הדמות הזו תעבירו את הסיבוב.",
+      "אם אינכם מכירים את הדמות תנסו לתת רמזים מתוחכמים על שם הדמות כך שהאימפוסטר לא יזהה, אל תיהיו לוזרים ותוותרו..",
+      "הסיכוי להיבחר כאימפוסטר הוא תמיד בהסתברות שווה לכל אחד, רוצים מוד יותר מתוחכם? תוכלו להפעיל אותו.",
+      "שם החדר יזכור בפלאפון שלכם את הדמויות ששיחקתם איתם, כך שגם בפעם הבאה שתשחקו מהפלאפון הזה הדמויות לא יחזרו על עצמם אם תכניסו את אותו שם חדר אז... חשוב לזכור אותו!",
+      "במוד עירד המשחק בגדול זהה רק שבמקום רמזים ההמלצה היא לשאול בתורות שאלות אנשים אחרים שתעזור לכם להבין האם הוא האימפוסטר.",
+    ],
+  },
+  {
+    title: "יצירת קשר",
+    items: ["לכל בעיה, או הצעה לשיפור מוזמנים לפנות ל-alon.benyosef1@gmail.com"],
+  },
+];
+
+const ONLINE_HELP_SECTIONS = [
+  {
+    title: "איך משחקים אונליין",
+    items: [
+      "במסך שלכם יופיע קלף, לחיצה על הקלף תחשוף את הדמות למעט האימפוסטר שיקבל רמז במידה והוגדר לפי רמת הקושי על הדמות.",
+      "כל שחקן בתורו לפי סדר לבחירתכם ייתן רמז על הדמות הרמז צריך להיות מתוכנן כך שגם יוכלו להבין שאתה לא האימפוסטר אבל גם שהאימפוסטר לא יבין את הדמות.",
+      "האימפוסטר רשאי לתת את הרמז שהוא קיבל על המילה במידה וניתן בתור הרמז שלו.",
+    ],
+  },
+  {
+    title: "סיבובים והצבעות",
+    items: [
+      "לאחר שכל שחקן נתן רמז בסיום הסיבוב תוכלו לבחור האם להמשיך לעוד סיבוב או להצביע על מי האימפוסטר, אני ממליץ שלפחות עד 6 שחקנים כולל תעשו לפחות שני סיבובים לפני שמצביעים כדי שיהיה סיכוי גבוה יותר לאימפוסטר לנצח.",
+      "במידה ולא הצביעו על האימפוסטר, האימפוסטר ניצח, במידה ויש תיקו בהצבעות האימפוסטר ניצח, במידה ורוב ההצבעות על האימפוסטר תינתן לו ההזדמנות לנחש מי הדמות, אם הוא ניחש הוא ניצח, אם לא הצוות ינצח.",
+    ],
+  },
+  {
+    title: "מוד תחרות וניקוד",
+    items: [
+      "ניתן להפעיל מוד תחרות שניצחון של האימפוסטר שווה 3 נקודות בעוד שהפסד מקנה 1 לכל השאר.",
+      "כאשר משחקים במספר אימפוסטרים האימפוסטרים עדיין בקבוצה נפרדת אבל חלוקת הנקודות משתנה.",
+      "ההמלצה שלי היא שתצביעו כמספר האימפוסטרים פלוס אחד על אנשים.",
+    ],
+  },
+  {
+    title: "כלים וטיפים",
+    items: [
+      "מישהו הלך לשירותים? תקפיאו אותו מהמשחק, מישהו הרס את הסיבוב? לא רוצים לשחק עם הדמות הזו תעבירו את הסיבוב.",
+      "אם אינכם מכירים את הדמות תנסו לתת רמזים מתוחכמים על שם הדמות כך שהאימפוסטר לא יזהה, אל תיהיו לוזרים ותוותרו..",
+      "הסיכוי להיבחר כאימפוסטר הוא תמיד בהסתברות שווה לכל אחד, רוצים מוד יותר מתוחכם? תוכלו להפעיל אותו.",
+      "שם החדר יזכור את הדמויות ששיחקתם איתם, כך שגם בפעם הבאה שתשחקו באותו חדר הדמויות לא יחזרו על עצמם כל עוד החדר נשמר אז... חשוב לזכור אותו!",
+      "במוד עירד המשחק בגדול זהה רק שבמקום רמזים ההמלצה היא לשאול בתורות שאלות אנשים אחרים שתעזור לכם להבין האם הוא האימפוסטר.",
+      "חשוב להדגיש, במוד זה ההחלטות והתורות שלכם מוגבלים בזמן, היזהרו!",
+    ],
+  },
+  {
+    title: "יצירת קשר",
+    items: ["לכל בעיה, או הצעה לשיפור מוזמנים לפנות ל-alon.benyosef1@gmail.com"],
+  },
+];
+
+function HelpIconButton({ onClick, title = "How to play" }) {
+  return (
+    <button
+      type="button"
+      aria-label={title}
+      title={title}
+      onClick={onClick}
+      style={{
+        position: "fixed",
+        right: "max(8px, env(safe-area-inset-right))",
+        top: "max(8px, env(safe-area-inset-top))",
+        zIndex: 2147483647,
+        width: 36,
+        height: 36,
+        borderRadius: 999,
+        border: "1px solid rgba(255,255,255,0.6)",
+        background: "rgba(15, 23, 42, 0.92)",
+        color: "white",
+        fontSize: 18,
+        fontWeight: 950,
+        cursor: "pointer",
+        boxShadow: "0 12px 30px rgba(15, 23, 42, 0.28)",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        ...MOBILE_TAP_STYLE,
+      }}
+    >
+      ⚙️
+    </button>
+  );
+}
+
+function HelpModal({ title, sections, onClose }) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 2147483646,
+        background: "rgba(15, 23, 42, 0.62)",
+        padding: "max(18px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left))",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        ...NO_SELECTION_STYLE,
+      }}
+    >
+      <div
+        onClick={(event) => event.stopPropagation()}
+        dir="rtl"
+        style={{
+          width: "min(760px, 100%)",
+          maxHeight: "min(86vh, 820px)",
+          overflowY: "auto",
+          borderRadius: 24,
+          background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+          color: "#111827",
+          border: "1px solid rgba(255,255,255,0.8)",
+          boxShadow: "0 28px 80px rgba(15,23,42,0.38)",
+          padding: 20,
+          boxSizing: "border-box",
+          textAlign: "right",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 950, color: "#2563eb", letterSpacing: 0.7, textTransform: "uppercase" }}>מדריך משחק</div>
+            <h2 style={{ margin: "3px 0 0", fontSize: 26, lineHeight: 1.1 }}>{title}</h2>
+          </div>
+          <button
+            type="button"
+            aria-label="סגור הסבר"
+            onClick={onClose}
+            style={{
+              minWidth: 42,
+              height: 42,
+              borderRadius: 14,
+              border: 0,
+              background: "#111827",
+              color: "white",
+              fontSize: 20,
+              fontWeight: 950,
+              cursor: "pointer",
+              ...MOBILE_TAP_STYLE,
+            }}
+          >
+            ×
+          </button>
+        </div>
+        <div style={{ display: "grid", gap: 12 }}>
+          {sections.map((section) => (
+            <section key={section.title} style={{ padding: 14, borderRadius: 18, background: "rgba(239,246,255,0.78)", border: "1px solid rgba(37,99,235,0.12)" }}>
+              <h3 style={{ margin: "0 0 8px", fontSize: 17, color: "#172554" }}>{section.title}</h3>
+              <ul style={{ margin: 0, paddingInlineStart: 22, display: "grid", gap: 7, lineHeight: 1.45, fontWeight: 750, color: "#334155" }}>
+                {section.items.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </section>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function OnlineMode({ onExit, isMobile }) {
   const [clientId] = useState(() => getOnlineClientId());
   const [name, setName] = useState(() => (typeof window !== "undefined" ? window.localStorage.getItem(ONLINE_NAME_KEY) || "" : ""));
@@ -1268,6 +1459,7 @@ function OnlineMode({ onExit, isMobile }) {
   const [localSuspectVote, setLocalSuspectVote] = useState("");
   const [voteFeedback, setVoteFeedback] = useState({ decision: "", suspect: "" });
   const [onlineToast, setOnlineToast] = useState("");
+  const [showOnlineHelp, setShowOnlineHelp] = useState(false);
   const toastTimerRef = useRef(null);
   const onlineActionCommitRef = useRef({ key: "", at: 0 });
   const [now, setNow] = useState(Date.now());
@@ -1986,6 +2178,10 @@ function OnlineMode({ onExit, isMobile }) {
         v{ONLINE_APP_VERSION}
       </div>
 
+
+      <HelpIconButton onClick={() => setShowOnlineHelp(true)} title="How to play online" />
+      {showOnlineHelp && <HelpModal title="איך משחקים אונליין" sections={ONLINE_HELP_SECTIONS} onClose={() => setShowOnlineHelp(false)} />}
+
       {onlineToast && (
         <div
           data-no-mobile-select="true"
@@ -2368,6 +2564,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     return params.get("online") === "1";
   });
+  const [showOfflineHelp, setShowOfflineHelp] = useState(false);
 
   const isMobile = windowWidth < 768;
   const currentAssignment = round?.assignments?.[currentIndex] ?? null;
@@ -2788,6 +2985,9 @@ export default function App() {
       >
         v{ONLINE_APP_VERSION}
       </div>
+
+      <HelpIconButton onClick={() => setShowOfflineHelp(true)} title="How to play offline" />
+      {showOfflineHelp && <HelpModal title="איך משחקים אופליין" sections={OFFLINE_HELP_SECTIONS} onClose={() => setShowOfflineHelp(false)} />}
 
       <div
         style={{
