@@ -986,6 +986,7 @@ const ONLINE_TURN_SECONDS = 90;
 const ONLINE_DECISION_SECONDS = 90;
 const ONLINE_IMPOSTOR_GUESS_SECONDS = 120;
 const ONLINE_HOST_OVERRIDE_SECONDS = 10;
+const ONLINE_REQUEST_TIMEOUT_MS = 8000;
 
 function getOnlineClientId() {
   if (typeof window === "undefined") return `client-${Math.random().toString(36).slice(2)}`;
@@ -1003,38 +1004,51 @@ function createOnlineRoomId() {
 function getOnlineFirebaseUrl() {
   if (typeof window === "undefined") return "";
   const viteUrl = import.meta?.env?.VITE_FIREBASE_DATABASE_URL || "";
-  const storedUrl = window.localStorage.getItem(ONLINE_FIREBASE_URL_KEY) || "";
-  return (viteUrl || storedUrl).replace(/\/$/, "");
+  return viteUrl.replace(/\/$/, "");
 }
 
 function makeOnlineUrl(baseUrl, roomId) {
   return `${baseUrl}/rooms/${encodeURIComponent(roomId)}.json`;
 }
 
+async function onlineFetchJson(url, options = {}) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), ONLINE_REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`Online server returned ${response.status}`);
+    }
+    return response.json();
+  } catch (err) {
+    if (err?.name === "AbortError") {
+      throw new Error("Online server did not respond in time");
+    }
+    throw err;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 async function firebaseGet(baseUrl, roomId) {
-  const response = await fetch(makeOnlineUrl(baseUrl, roomId), { cache: "no-store" });
-  if (!response.ok) throw new Error("Could not read online room");
-  return response.json();
+  return onlineFetchJson(makeOnlineUrl(baseUrl, roomId), { cache: "no-store" });
 }
 
 async function firebasePut(baseUrl, roomId, value) {
-  const response = await fetch(makeOnlineUrl(baseUrl, roomId), {
+  return onlineFetchJson(makeOnlineUrl(baseUrl, roomId), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(value),
   });
-  if (!response.ok) throw new Error("Could not save online room");
-  return response.json();
 }
 
 async function firebasePatch(baseUrl, roomId, value) {
-  const response = await fetch(makeOnlineUrl(baseUrl, roomId), {
+  return onlineFetchJson(makeOnlineUrl(baseUrl, roomId), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(value),
   });
-  if (!response.ok) throw new Error("Could not update online room");
-  return response.json();
 }
 
 function normalizeOnlineRoom(rawRoom, fallbackRoomId, clientId, playerName) {
@@ -1098,11 +1112,12 @@ function OnlineMode({ onExit, isMobile }) {
     const params = new URLSearchParams(window.location.search);
     return (params.get("room") || "").toUpperCase();
   });
-  const [firebaseUrl, setFirebaseUrl] = useState(() => getOnlineFirebaseUrl());
+  const [firebaseUrl] = useState(() => getOnlineFirebaseUrl());
   const [room, setRoom] = useState(null);
   const [joined, setJoined] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [onlineUnavailable, setOnlineUnavailable] = useState(false);
   const [clueText, setClueText] = useState("");
   const [chatText, setChatText] = useState("");
   const [guessText, setGuessText] = useState("");
@@ -1120,6 +1135,22 @@ function OnlineMode({ onExit, isMobile }) {
   const inviteLink = typeof window === "undefined" ? "" : `${window.location.origin}${window.location.pathname}?online=1&room=${room?.id || roomId}`;
   const canStartOnline = playerNames.length >= 2;
 
+  function markOnlineUnavailable(message) {
+    setOnlineUnavailable(true);
+    setError(message || "Online mode is currently unavailable. Offline mode still works.");
+  }
+
+  async function safeOnlineAction(action, fallbackMessage) {
+    if (onlineUnavailable) return null;
+    try {
+      return await action();
+    } catch (err) {
+      console.error(err);
+      markOnlineUnavailable(fallbackMessage || err?.message);
+      return null;
+    }
+  }
+
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 500);
     return () => window.clearInterval(interval);
@@ -1136,16 +1167,32 @@ function OnlineMode({ onExit, isMobile }) {
   }, [joined, room?.id]);
 
   async function saveRoom(nextRoom) {
-    const cleanUrl = firebaseUrl.replace(/\/$/, "");
-    await firebasePut(cleanUrl, nextRoom.id, { ...nextRoom, updatedAt: Date.now() });
-    setRoom({ ...nextRoom, updatedAt: Date.now() });
+    if (!firebaseUrl || !nextRoom?.id) {
+      markOnlineUnavailable("Online mode is not configured. Offline mode still works.");
+      return null;
+    }
+    return safeOnlineAction(async () => {
+      const cleanUrl = firebaseUrl.replace(/\/$/, "");
+      const updatedRoom = { ...nextRoom, updatedAt: Date.now() };
+      await firebasePut(cleanUrl, nextRoom.id, updatedRoom);
+      setRoom(updatedRoom);
+      return updatedRoom;
+    }, "Could not save the online room. Offline mode still works.");
   }
 
   async function patchRoom(patch) {
-    if (!room?.id) return;
-    const cleanUrl = firebaseUrl.replace(/\/$/, "");
-    await firebasePatch(cleanUrl, room.id, { ...patch, updatedAt: Date.now() });
-    setRoom((prev) => (prev ? { ...prev, ...patch, updatedAt: Date.now() } : prev));
+    if (!room?.id) return null;
+    if (!firebaseUrl) {
+      markOnlineUnavailable("Online mode is not configured. Offline mode still works.");
+      return null;
+    }
+    return safeOnlineAction(async () => {
+      const cleanUrl = firebaseUrl.replace(/\/$/, "");
+      const updatedAt = Date.now();
+      await firebasePatch(cleanUrl, room.id, { ...patch, updatedAt });
+      setRoom((prev) => (prev ? { ...prev, ...patch, updatedAt } : prev));
+      return true;
+    }, "Could not sync the online room. Offline mode still works.");
   }
 
   async function joinRoom() {
@@ -1153,7 +1200,7 @@ function OnlineMode({ onExit, isMobile }) {
     const cleanName = name.trim();
     const cleanRoomId = (roomId || createOnlineRoomId()).trim().toUpperCase();
     if (!cleanUrl) {
-      setError("צריך להגדיר Firebase Realtime Database URL כדי שאונליין יעבוד בין מכשירים.");
+      setError("מוד האונליין עדיין לא מוגדר בשרת. צריך להוסיף ב-Vercel את VITE_FIREBASE_DATABASE_URL.");
       return;
     }
     if (!cleanName) {
@@ -1162,11 +1209,11 @@ function OnlineMode({ onExit, isMobile }) {
     }
 
     setLoading(true);
+    setOnlineUnavailable(false);
     setError("");
     try {
       if (typeof window !== "undefined") {
         window.localStorage.setItem(ONLINE_NAME_KEY, cleanName);
-        window.localStorage.setItem(ONLINE_FIREBASE_URL_KEY, cleanUrl);
       }
       const existing = await firebaseGet(cleanUrl, cleanRoomId);
       const nextRoom = normalizeOnlineRoom(existing, cleanRoomId, clientId, cleanName);
@@ -1181,14 +1228,15 @@ function OnlineMode({ onExit, isMobile }) {
       setRoomId(cleanRoomId);
       setJoined(true);
     } catch (err) {
-      setError(err.message || "לא הצלחתי להתחבר לחדר.");
+      console.error(err);
+      markOnlineUnavailable(err?.message || "לא הצלחתי להתחבר לחדר. מצב אופליין עדיין עובד.");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    if (!joined || !firebaseUrl || !room?.id) return;
+    if (!joined || !firebaseUrl || !room?.id || onlineUnavailable) return;
     let cancelled = false;
     const interval = window.setInterval(async () => {
       try {
@@ -1205,7 +1253,7 @@ function OnlineMode({ onExit, isMobile }) {
   }, [joined, firebaseUrl, room?.id]);
 
   useEffect(() => {
-    if (!joined || !room?.id || !firebaseUrl) return;
+    if (!joined || !room?.id || !firebaseUrl || onlineUnavailable) return;
     const interval = window.setInterval(() => {
       firebasePatch(firebaseUrl.replace(/\/$/, ""), room.id, {
         [`players/${clientId}/lastSeen`]: Date.now(),
@@ -1213,7 +1261,7 @@ function OnlineMode({ onExit, isMobile }) {
       }).catch(() => {});
     }, 5000);
     return () => window.clearInterval(interval);
-  }, [joined, firebaseUrl, room?.id, clientId]);
+  }, [joined, firebaseUrl, room?.id, clientId, onlineUnavailable]);
 
   async function startOnlineRound() {
     if (!isHost || !canStartOnline) return;
@@ -1380,13 +1428,22 @@ function OnlineMode({ onExit, isMobile }) {
           <button onClick={onExit} style={{ ...buttonStyle, background: "#111827" }}>Back offline</button>
         </div>
 
+        {onlineUnavailable && (
+          <div style={{ ...panelStyle, border: "1px solid rgba(220, 38, 38, 0.35)", background: "#fff1f2", color: "#991b1b", fontWeight: 900 }}>
+            Online mode is currently unavailable. You can go back and keep playing offline normally.
+          </div>
+        )}
+
         {!joined && (
           <div style={{ ...panelStyle, display: "grid", gap: 12 }}>
             <div style={{ fontWeight: 900, color: "#172554" }}>Join or create room</div>
             <input style={inputStyle} value={name} onChange={(event) => setName(event.target.value)} placeholder="Your name" />
             <input style={inputStyle} value={roomId} onChange={(event) => setRoomId(event.target.value.toUpperCase())} placeholder="Room code, or leave empty to create" />
-            <input style={inputStyle} value={firebaseUrl} onChange={(event) => setFirebaseUrl(event.target.value)} placeholder="Firebase Realtime Database URL" />
-            <div style={{ color: "#64748b", fontSize: 13, fontWeight: 700 }}>Use VITE_FIREBASE_DATABASE_URL in Vercel, or paste the database URL here once.</div>
+            {!firebaseUrl && (
+              <div style={{ color: "#b91c1c", fontSize: 13, fontWeight: 800 }}>
+                Online mode is not configured yet. Add VITE_FIREBASE_DATABASE_URL in Vercel.
+              </div>
+            )}
             {error && <div style={{ color: "#b91c1c", fontWeight: 800 }}>{error}</div>}
             <button onClick={joinRoom} disabled={loading} style={{ ...buttonStyle, opacity: loading ? 0.65 : 1 }}>{loading ? "Connecting..." : "Enter online room"}</button>
           </div>
