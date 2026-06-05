@@ -984,6 +984,7 @@ const ONLINE_POLL_MS = 1200;
 const ONLINE_FIRST_TURN_SECONDS = 120;
 const ONLINE_TURN_SECONDS = 90;
 const ONLINE_DECISION_SECONDS = 90;
+const ONLINE_SUSPECT_VOTE_SECONDS = 180;
 const ONLINE_IMPOSTOR_GUESS_SECONDS = 120;
 const ONLINE_HOST_OVERRIDE_SECONDS = 10;
 const ONLINE_REQUEST_TIMEOUT_MS = 8000;
@@ -1059,7 +1060,9 @@ function normalizeOnlineRoom(rawRoom, fallbackRoomId, clientId, playerName) {
     hostId: clientId,
     createdAt: now,
     updatedAt: now,
-    settings: { theme: "characters", pool: "all", difficulty: "medium", impostorGetsHint: true },
+    settings: { theme: "characters", pool: "all", difficulty: "medium", impostorGetsHint: true, impostorCount: 1, balancedImpostorMode: false, competitionMode: false },
+    frozenPlayers: [],
+    impostorMeta: { counts: {}, history: [] },
     usedCharacters: [],
     phase: "lobby",
     round: null,
@@ -1122,10 +1125,17 @@ function OnlineMode({ onExit, isMobile }) {
   const [chatText, setChatText] = useState("");
   const [guessText, setGuessText] = useState("");
   const [cardRevealed, setCardRevealed] = useState(false);
+  const [copyStatus, setCopyStatus] = useState("");
   const [now, setNow] = useState(Date.now());
 
   const players = useMemo(() => getOnlinePlayers(room), [room]);
   const playerNames = useMemo(() => getOnlinePlayerNames(room), [room]);
+  const activeOnlinePlayerNames = useMemo(() => {
+    const frozenSet = new Set(room?.frozenPlayers || []);
+    return playerNames.filter((player) => !frozenSet.has(player));
+  }, [playerNames, room?.frozenPlayers]);
+  const onlineSettings = room?.settings || { theme: "characters", pool: "all", difficulty: "medium", impostorGetsHint: true, impostorCount: 1, balancedImpostorMode: false, competitionMode: false };
+  const roundPlayerNames = room?.round?.assignments?.map((assignment) => assignment.player) || activeOnlinePlayerNames;
   const me = room?.players?.[clientId] || null;
   const isHost = room?.hostId === clientId;
   const myAssignment = room?.round?.assignments?.find((assignment) => assignment.player === me?.name) || null;
@@ -1133,7 +1143,9 @@ function OnlineMode({ onExit, isMobile }) {
   const isMyTurn = room?.phase === "clue" && currentTurnPlayer === me?.name;
   const secondsLeft = room?.phaseEndsAt ? Math.max(0, Math.ceil((room.phaseEndsAt - now) / 1000)) : 0;
   const inviteLink = typeof window === "undefined" ? "" : `${window.location.origin}${window.location.pathname}?online=1&room=${room?.id || roomId}`;
-  const canStartOnline = playerNames.length >= 2;
+  const canStartOnline = activeOnlinePlayerNames.length >= 2;
+  const myDecisionVote = room?.decisionVotes?.[clientId] || "";
+  const mySuspectVote = room?.suspectVotes?.[clientId] || "";
 
   function markOnlineUnavailable(message) {
     setOnlineUnavailable(true);
@@ -1263,15 +1275,55 @@ function OnlineMode({ onExit, isMobile }) {
     return () => window.clearInterval(interval);
   }, [joined, firebaseUrl, room?.id, clientId, onlineUnavailable]);
 
+  async function copyInviteLink() {
+    try {
+      await navigator.clipboard?.writeText(inviteLink);
+      setCopyStatus("Copied!");
+      window.setTimeout(() => setCopyStatus(""), 1800);
+    } catch {
+      setCopyStatus("Copy failed");
+      window.setTimeout(() => setCopyStatus(""), 2200);
+    }
+  }
+
+  async function updateOnlineSettings(patch) {
+    if (!isHost) return;
+    const nextSettings = { ...onlineSettings, ...patch };
+    if (nextSettings.theme === "characters" && !["all", "global", "israel"].includes(nextSettings.pool)) nextSettings.pool = "all";
+    if (nextSettings.theme === "places_objects" && !["all", "place", "object"].includes(nextSettings.pool)) nextSettings.pool = "all";
+    await patchRoom({ settings: nextSettings });
+  }
+
+  async function toggleOnlineFreeze(playerName) {
+    if (!isHost || room.phase !== "lobby") return;
+    const current = room.frozenPlayers || [];
+    const nextFrozen = current.includes(playerName)
+      ? current.filter((name) => name !== playerName)
+      : [...current, playerName];
+    await patchRoom({ frozenPlayers: nextFrozen });
+  }
+
   async function startOnlineRound() {
     if (!isHost || !canStartOnline) return;
-    const settings = room.settings || { theme: "characters", pool: "all", difficulty: "medium", impostorGetsHint: true };
-    const nextRound = buildRound(playerNames, settings, room.usedCharacters || [], {}, false, 1);
+    const settings = { ...onlineSettings };
+    const safeImpostorCount = Math.max(1, Math.min(Number(settings.impostorCount || 1), Math.max(1, activeOnlinePlayerNames.length - 1), 3));
+    const nextRound = buildRound(
+      activeOnlinePlayerNames,
+      settings,
+      room.usedCharacters || [],
+      room.impostorMeta || {},
+      Boolean(settings.balancedImpostorMode),
+      safeImpostorCount
+    );
+    if (!settings.impostorGetsHint) {
+      nextRound.assignments = nextRound.assignments.map((assignment) => assignment.isImpostor ? { ...assignment, hint: "" } : assignment);
+    }
     const nextUsed = [...(room.usedCharacters || []), nextRound.character.name];
     await patchRoom({
       phase: "clue",
       round: nextRound,
       usedCharacters: nextUsed,
+      impostorMeta: { counts: nextRound.nextImpostorCounts, history: nextRound.nextImpostorHistory },
       roundNumber: (room.roundNumber || 0) + 1,
       turnIndex: 0,
       phaseEndsAt: Date.now() + ONLINE_FIRST_TURN_SECONDS * 1000,
@@ -1351,7 +1403,7 @@ function OnlineMode({ onExit, isMobile }) {
     if (room.phase === "decision") {
       const result = getVoteWinner(room.decisionVotes, "continue");
       if (result === "guess") {
-        patchRoom({ phase: "suspect_vote", phaseEndsAt: Date.now() + ONLINE_DECISION_SECONDS * 1000, suspectVotes: {} }).catch(() => {});
+        patchRoom({ phase: "suspect_vote", phaseEndsAt: Date.now() + ONLINE_SUSPECT_VOTE_SECONDS * 1000, suspectVotes: {} }).catch(() => {});
       } else {
         patchRoom({ phase: "clue", turnIndex: 0, phaseEndsAt: Date.now() + ONLINE_TURN_SECONDS * 1000, decisionVotes: {} }).catch(() => {});
       }
@@ -1375,10 +1427,10 @@ function OnlineMode({ onExit, isMobile }) {
 
   useEffect(() => {
     if (!isHost || !room) return;
-    const total = playerNames.length;
+    const total = roundPlayerNames.length;
     if (room.phase === "decision" && total > 0 && Object.keys(room.decisionVotes || {}).length >= total) {
       const result = getVoteWinner(room.decisionVotes, "continue");
-      patchRoom(result === "guess" ? { phase: "suspect_vote", phaseEndsAt: Date.now() + ONLINE_DECISION_SECONDS * 1000, suspectVotes: {} } : { phase: "clue", turnIndex: 0, phaseEndsAt: Date.now() + ONLINE_TURN_SECONDS * 1000, decisionVotes: {} }).catch(() => {});
+      patchRoom(result === "guess" ? { phase: "suspect_vote", phaseEndsAt: Date.now() + ONLINE_SUSPECT_VOTE_SECONDS * 1000, suspectVotes: {} } : { phase: "clue", turnIndex: 0, phaseEndsAt: Date.now() + ONLINE_TURN_SECONDS * 1000, decisionVotes: {} }).catch(() => {});
     }
     if (room.phase === "suspect_vote" && total > 0 && Object.keys(room.suspectVotes || {}).length >= total) {
       const suspect = getVoteWinner(room.suspectVotes, "");
@@ -1389,7 +1441,7 @@ function OnlineMode({ onExit, isMobile }) {
         winner: correct ? null : { side: "impostor", reason: `Wrong guess: ${suspect || "no majority"}.` },
       }).catch(() => {});
     }
-  }, [isHost, room?.decisionVotes, room?.suspectVotes, room?.phase, playerNames.length]);
+  }, [isHost, room?.decisionVotes, room?.suspectVotes, room?.phase, roundPlayerNames.length]);
 
   const panelStyle = {
     background: "rgba(255,255,255,0.78)",
@@ -1404,6 +1456,8 @@ function OnlineMode({ onExit, isMobile }) {
     borderRadius: 14,
     border: "1px solid rgba(100, 116, 139, 0.28)",
     fontWeight: 700,
+    fontSize: 16,
+    minHeight: 48,
     boxSizing: "border-box",
   };
   const buttonStyle = {
@@ -1414,10 +1468,11 @@ function OnlineMode({ onExit, isMobile }) {
     color: "white",
     fontWeight: 900,
     cursor: "pointer",
+    ...NO_SELECTION_STYLE,
   };
 
   return (
-    <div style={{ minHeight: "100vh", padding: isMobile ? 14 : 28, background: "radial-gradient(circle at top left, rgba(59, 130, 246, 0.35), transparent 28%), linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%)", color: "#111827" }}>
+    <div style={{ minHeight: "100vh", padding: isMobile ? 14 : 28, ...NO_SELECTION_STYLE, background: "radial-gradient(circle at top left, rgba(59, 130, 246, 0.35), transparent 28%), linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%)", color: "#111827" }}>
       <div style={{ maxWidth: 1180, margin: "0 auto", display: "grid", gap: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <div>
@@ -1458,11 +1513,52 @@ function OnlineMode({ onExit, isMobile }) {
                     <div style={{ fontSize: 12, color: "#64748b", fontWeight: 900 }}>Room</div>
                     <div style={{ fontSize: 24, fontWeight: 950 }}>{room.id}</div>
                   </div>
-                  <button onClick={() => navigator.clipboard?.writeText(inviteLink)} style={buttonStyle}>Copy invite link</button>
+                  <button onClick={copyInviteLink} style={{ ...buttonStyle, background: copyStatus === "Copied!" ? "#16a34a" : buttonStyle.background }}>{copyStatus || "Copy invite link"}</button>
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {players.map((player) => <span key={player.id} style={{ padding: "8px 10px", borderRadius: 999, background: player.id === room.hostId ? "#dbeafe" : "#eef2ff", color: "#172554", fontWeight: 900 }}>{player.name}{player.id === room.hostId ? " 👑" : ""}</span>)}
+                  {players.map((player) => {
+                    const isFrozen = (room.frozenPlayers || []).includes(player.name);
+                    return (
+                      <span key={player.id} style={{ padding: "9px 12px", borderRadius: 14, background: isFrozen ? "#e5e7eb" : (player.id === room.hostId ? "#dbeafe" : "#eef2ff"), color: isFrozen ? "#64748b" : "#172554", fontWeight: 900, minHeight: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", textAlign: "center", lineHeight: 1.1 }}>
+                        {player.name}{player.id === room.hostId ? " 👑" : ""}{isFrozen ? " ❄️" : ""}
+                      </span>
+                    );
+                  })}
                 </div>
+                {room.phase === "lobby" && isHost && (
+                  <div style={{ display: "grid", gap: 10, padding: 12, borderRadius: 18, background: "rgba(248,250,252,0.9)", border: "1px solid rgba(148,163,184,0.25)" }}>
+                    <div style={{ fontWeight: 950, color: "#172554" }}>Host game settings</div>
+                    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+                      <select style={inputStyle} value={onlineSettings.theme} onChange={(event) => updateOnlineSettings({ theme: event.target.value, pool: "all" })}>
+                        {THEME_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                      <select style={inputStyle} value={onlineSettings.pool} onChange={(event) => updateOnlineSettings({ pool: event.target.value })}>
+                        {(onlineSettings.theme === "places_objects" ? PLACES_OBJECTS_POOL_OPTIONS : CHARACTER_POOL_OPTIONS).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                      <select style={inputStyle} value={onlineSettings.difficulty} onChange={(event) => updateOnlineSettings({ difficulty: event.target.value })}>
+                        {DIFFICULTY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button onClick={() => updateOnlineSettings({ impostorGetsHint: !onlineSettings.impostorGetsHint })} style={{ ...buttonStyle, background: onlineSettings.impostorGetsHint ? "#16a34a" : "#64748b" }}>Impostor hint: {onlineSettings.impostorGetsHint ? "On" : "Off"}</button>
+                      <button onClick={() => updateOnlineSettings({ balancedImpostorMode: !onlineSettings.balancedImpostorMode })} style={{ ...buttonStyle, background: onlineSettings.balancedImpostorMode ? "#16a34a" : "#64748b" }}>Smart impostor: {onlineSettings.balancedImpostorMode ? "On" : "Off"}</button>
+                      <button onClick={() => updateOnlineSettings({ competitionMode: !onlineSettings.competitionMode })} style={{ ...buttonStyle, background: onlineSettings.competitionMode ? "#16a34a" : "#64748b" }}>Competition: {onlineSettings.competitionMode ? "On" : "Off"}</button>
+                      <select style={{ ...inputStyle, width: 170 }} value={Math.max(1, Math.min(Number(onlineSettings.impostorCount || 1), Math.max(1, activeOnlinePlayerNames.length - 1), 3))} onChange={(event) => updateOnlineSettings({ impostorCount: Number(event.target.value) })}>
+                        {[1, 2, 3].filter((count) => count <= Math.max(1, activeOnlinePlayerNames.length - 1)).map((count) => <option key={count} value={count}>{count} impostor{count > 1 ? "s" : ""}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ display: "grid", gap: 6 }}>
+                      <div style={{ fontWeight: 900, color: "#475569", fontSize: 13 }}>Freeze players for next round</div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {players.map((player) => {
+                          const frozen = (room.frozenPlayers || []).includes(player.name);
+                          return <button key={`freeze-${player.id}`} onClick={() => toggleOnlineFreeze(player.name)} style={{ ...buttonStyle, background: frozen ? "#64748b" : "#2563eb", padding: "9px 12px" }}>{frozen ? "Unfreeze" : "Freeze"} {player.name}</button>;
+                        })}
+                      </div>
+                    </div>
+                    <div style={{ color: canStartOnline ? "#166534" : "#b91c1c", fontWeight: 800, fontSize: 13 }}>Active players: {activeOnlinePlayerNames.length}. Need at least 2.</div>
+                  </div>
+                )}
                 {room.phase === "lobby" && isHost && <button onClick={startOnlineRound} disabled={!canStartOnline} style={{ ...buttonStyle, opacity: canStartOnline ? 1 : 0.55 }}>Start game from 2 players</button>}
                 {room.phase === "lobby" && !isHost && <div style={{ color: "#475569", fontWeight: 800 }}>Waiting for the host to start.</div>}
               </div>
@@ -1474,7 +1570,7 @@ function OnlineMode({ onExit, isMobile }) {
                     {room.phaseEndsAt && <div style={{ padding: "8px 12px", borderRadius: 999, background: secondsLeft <= 10 ? "#fee2e2" : "#dbeafe", color: secondsLeft <= 10 ? "#991b1b" : "#172554", fontWeight: 950 }}>⏱ {secondsLeft}s</div>}
                   </div>
 
-                  <button onPointerDown={() => setCardRevealed(true)} onPointerUp={() => setCardRevealed(false)} onPointerLeave={() => setCardRevealed(false)} onClick={() => setCardRevealed((prev) => !prev)} style={{ minHeight: 210, border: 0, borderRadius: 24, background: cardRevealed ? (myAssignment.isImpostor ? "linear-gradient(145deg, #020617 0%, #7f1d1d 55%, #dc2626 100%)" : "linear-gradient(145deg, #dbeafe 0%, #bfdbfe 100%)") : "linear-gradient(145deg, #312e81 0%, #4f46e5 55%, #111827 100%)", color: cardRevealed ? (myAssignment.isImpostor ? "#fee2e2" : "#172554") : "white", fontWeight: 950, fontSize: 26, cursor: "pointer", ...NO_SELECTION_STYLE }}>
+                  <button onPointerDown={() => setCardRevealed(true)} onPointerUp={() => setCardRevealed(false)} onPointerLeave={() => setCardRevealed(false)} onClick={() => setCardRevealed((prev) => !prev)} style={{ minHeight: 190, border: 0, borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", lineHeight: 1.15, background: cardRevealed ? (myAssignment.isImpostor ? "linear-gradient(145deg, #020617 0%, #7f1d1d 55%, #dc2626 100%)" : "linear-gradient(145deg, #dbeafe 0%, #bfdbfe 100%)") : "linear-gradient(145deg, #312e81 0%, #4f46e5 55%, #111827 100%)", color: cardRevealed ? (myAssignment.isImpostor ? "#fee2e2" : "#172554") : "white", fontWeight: 950, fontSize: 26, cursor: "pointer", ...NO_SELECTION_STYLE }}>
                     {cardRevealed ? (
                       <div>
                         <div style={{ fontSize: 14, letterSpacing: 1, textTransform: "uppercase" }}>{myAssignment.isImpostor ? "Impostor" : "Your word"}</div>
@@ -1487,7 +1583,7 @@ function OnlineMode({ onExit, isMobile }) {
                   {room.phase === "clue" && (
                     <div style={{ display: "grid", gap: 10 }}>
                       <div style={{ color: "#475569", fontWeight: 800 }}>Each player gives one-word clue. Spaces are blocked automatically.</div>
-                      <div style={{ display: "flex", gap: 8 }}>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <input disabled={!isMyTurn} style={inputStyle} value={clueText} onChange={(event) => setClueText(sanitizeOneWordClue(event.target.value))} placeholder={isMyTurn ? "One-word clue" : "Wait for your turn"} />
                         <button disabled={!isMyTurn} onClick={submitClue} style={{ ...buttonStyle, opacity: isMyTurn ? 1 : 0.55 }}>Send</button>
                       </div>
@@ -1505,9 +1601,10 @@ function OnlineMode({ onExit, isMobile }) {
                     <div style={{ display: "grid", gap: 10 }}>
                       <div style={{ fontWeight: 950 }}>Continue another clue round or guess the impostor?</div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button onClick={() => voteDecision("continue")} style={buttonStyle}>Another round</button>
-                        <button onClick={() => voteDecision("guess")} style={{ ...buttonStyle, background: "#dc2626" }}>Guess impostor</button>
+                        <button onClick={() => voteDecision("continue")} style={{ ...buttonStyle, background: myDecisionVote === "continue" ? "#16a34a" : buttonStyle.background, outline: myDecisionVote === "continue" ? "3px solid #bbf7d0" : "none" }}>{myDecisionVote === "continue" ? "✓ Another round" : "Another round"}</button>
+                        <button onClick={() => voteDecision("guess")} style={{ ...buttonStyle, background: myDecisionVote === "guess" ? "#16a34a" : "#dc2626", outline: myDecisionVote === "guess" ? "3px solid #bbf7d0" : "none" }}>{myDecisionVote === "guess" ? "✓ Guess impostor" : "Guess impostor"}</button>
                       </div>
+                      {myDecisionVote && <div style={{ color: "#166534", fontWeight: 900 }}>Your vote was saved.</div>}
                     </div>
                   )}
 
@@ -1515,15 +1612,16 @@ function OnlineMode({ onExit, isMobile }) {
                     <div style={{ display: "grid", gap: 10 }}>
                       <div style={{ fontWeight: 950 }}>Vote who is the impostor</div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        {playerNames.map((player) => <button key={player} onClick={() => voteSuspect(player)} style={buttonStyle}>{player}</button>)}
+                        {roundPlayerNames.map((player) => <button key={player} onClick={() => voteSuspect(player)} style={{ ...buttonStyle, background: mySuspectVote === player ? "#16a34a" : buttonStyle.background, outline: mySuspectVote === player ? "3px solid #bbf7d0" : "none" }}>{mySuspectVote === player ? `✓ ${player}` : player}</button>)}
                       </div>
+                      {mySuspectVote && <div style={{ color: "#166534", fontWeight: 900 }}>Your vote was saved: {mySuspectVote}</div>}
                     </div>
                   )}
 
                   {room.phase === "impostor_guess" && (
                     <div style={{ display: "grid", gap: 10 }}>
                       <div style={{ fontWeight: 950 }}>The impostor has 120 seconds to guess the word.</div>
-                      {myAssignment.isImpostor ? <div style={{ display: "flex", gap: 8 }}><input style={inputStyle} value={guessText} onChange={(event) => setGuessText(event.target.value)} placeholder="Guess the word exactly" /><button onClick={submitImpostorGuess} style={buttonStyle}>Guess</button></div> : <div style={{ color: "#475569", fontWeight: 800 }}>Waiting for the impostor.</div>}
+                      {myAssignment.isImpostor ? <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><input style={inputStyle} value={guessText} onChange={(event) => setGuessText(event.target.value)} placeholder="Guess the word exactly" /><button onClick={submitImpostorGuess} style={buttonStyle}>Guess</button></div> : <div style={{ color: "#475569", fontWeight: 800 }}>Waiting for the impostor.</div>}
                     </div>
                   )}
 
@@ -1550,7 +1648,7 @@ function OnlineMode({ onExit, isMobile }) {
               <div style={{ height: isMobile ? 220 : 420, overflowY: "auto", display: "grid", alignContent: "start", gap: 8, background: "#f8fafc", borderRadius: 14, padding: 10 }}>
                 {(room.chat || []).map((message, index) => <div key={`${message.at}-${index}`} style={{ fontSize: 13 }}><b>{message.player}:</b> {message.text}</div>)}
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <input style={inputStyle} value={chatText} onChange={(event) => setChatText(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") sendChat(); }} placeholder="Write message" />
                 <button onClick={sendChat} style={buttonStyle}>Send</button>
               </div>
