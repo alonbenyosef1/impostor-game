@@ -540,7 +540,7 @@ const MOBILE_TAP_STYLE = {
 };
 
 const CREWMATES_WINNER_KEY = "__CREWMATES__";
-const ONLINE_APP_VERSION = "1.0.3";
+const ONLINE_APP_VERSION = "1.0.5";
 
 function pickRandom(array) {
   return array[Math.floor(Math.random() * array.length)];
@@ -1115,22 +1115,14 @@ function sanitizeOneWordClue(value) {
   return String(value || "").trim().replace(/\s+/g, "");
 }
 
-function normalizeOnlinePlayerName(value) {
-  return String(value || "")
+function normalizeOnlineIdentity(value) {
+  return String(value ?? "")
+    .normalize("NFKC")
+    .replace(/[​-‏‪-‮⁠﻿­͏︀-️]/g, "")
+    .replace(/ /g, " ")
+    .replace(/\s+/g, " ")
     .trim()
-    .toLowerCase()
-    .replace(/\s+/g, " ");
-}
-
-function onlineNamesMatch(left, right) {
-  const a = normalizeOnlinePlayerName(left);
-  const b = normalizeOnlinePlayerName(right);
-  if (!a || !b) return false;
-  if (a === b) return true;
-
-  // When a duplicate display name joins, the app may append a short client suffix.
-  // Treat the base name as equivalent so the current device still recognizes its turn.
-  return a.startsWith(`${b}-`) || b.startsWith(`${a}-`);
+    .toLowerCase();
 }
 
 function OnlineMode({ onExit, isMobile }) {
@@ -1157,6 +1149,7 @@ function OnlineMode({ onExit, isMobile }) {
   const [voteFeedback, setVoteFeedback] = useState({ decision: "", suspect: "" });
   const [onlineToast, setOnlineToast] = useState("");
   const toastTimerRef = useRef(null);
+  const onlineActionCommitRef = useRef({ key: "", at: 0 });
   const [now, setNow] = useState(Date.now());
 
   const players = useMemo(() => getOnlinePlayers(room), [room]);
@@ -1168,20 +1161,22 @@ function OnlineMode({ onExit, isMobile }) {
   const onlineSettings = room?.settings || { theme: "characters", pool: "all", difficulty: "medium", impostorGetsHint: true, impostorCount: 1, balancedImpostorMode: false, competitionMode: false };
   const roundPlayerNames = room?.round?.assignments?.map((assignment) => assignment.player) || activeOnlinePlayerNames;
   const me = room?.players?.[clientId] || null;
-  const isHost = room?.hostId === clientId;
-  const localStoredName = typeof window !== "undefined" ? window.localStorage.getItem(ONLINE_NAME_KEY) || "" : "";
-  const deviceNameCandidates = [me?.name, name, localStoredName]
-    .map((value) => String(value || "").trim())
+  const storedOnlineName = typeof window === "undefined" ? "" : window.localStorage.getItem(ONLINE_NAME_KEY) || "";
+  const selfNameCandidates = [me?.name, name, storedOnlineName, room?.players?.[clientId]?.name]
+    .map(normalizeOnlineIdentity)
     .filter(Boolean);
-  const myAssignment = room?.round?.assignments?.find((assignment) =>
-    deviceNameCandidates.some((candidate) => onlineNamesMatch(assignment.player, candidate))
-  ) || null;
+  const isSelfName = (value) => selfNameCandidates.includes(normalizeOnlineIdentity(value));
+  const hostPlayer = players.find((player) => player.id === room?.hostId) || null;
+  const isHost = room?.hostId === clientId || Boolean(hostPlayer?.name && isSelfName(hostPlayer.name));
+  const normalizedMeName = selfNameCandidates[0] || "";
+  const myAssignment = room?.round?.assignments?.find((assignment) => isSelfName(assignment.player)) || null;
   const currentTurnPlayer = room?.round?.assignments?.[room?.turnIndex || 0]?.player || "";
-  const isMyTurn = room?.phase === "clue" && currentTurnPlayer && (
-    deviceNameCandidates.some((candidate) => onlineNamesMatch(currentTurnPlayer, candidate)) ||
-    onlineNamesMatch(currentTurnPlayer, myAssignment?.player)
+  const normalizedTurnPlayer = normalizeOnlineIdentity(currentTurnPlayer);
+  const normalizedMyAssignmentPlayer = normalizeOnlineIdentity(myAssignment?.player || "");
+  const isMyTurn = room?.phase === "clue" && Boolean(
+    isSelfName(currentTurnPlayer) ||
+    (normalizedMyAssignmentPlayer && normalizedTurnPlayer === normalizedMyAssignmentPlayer)
   );
-  const deviceDisplayName = me?.name || name || localStoredName || "this device";
   const secondsLeft = room?.phaseEndsAt ? Math.max(0, Math.ceil((room.phaseEndsAt - now) / 1000)) : 0;
   const inviteLink = typeof window === "undefined" ? "" : `${window.location.origin}${window.location.pathname}?online=1&room=${room?.id || roomId}`;
   const canStartOnline = activeOnlinePlayerNames.length >= 2;
@@ -1211,7 +1206,40 @@ function OnlineMode({ onExit, isMobile }) {
   function showOnlineToast(message) {
     setOnlineToast(message);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = window.setTimeout(() => setOnlineToast(""), 2200);
+    toastTimerRef.current = window.setTimeout(() => setOnlineToast(""), 2600);
+  }
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  function shouldCommitOnlineAction(actionKey) {
+    const timestamp = Date.now();
+    const last = onlineActionCommitRef.current || { key: "", at: 0 };
+    if (last.key === actionKey && timestamp - last.at < 900) return false;
+    onlineActionCommitRef.current = { key: actionKey, at: timestamp };
+    return true;
+  }
+
+  function handleDecisionPressStart(value) {
+    markDecisionChoice(value);
+  }
+
+  function handleDecisionCommit(value) {
+    markDecisionChoice(value);
+    if (!shouldCommitOnlineAction(`decision:${value}`)) return;
+    voteDecision(value);
+  }
+
+  function handleSuspectPressStart(player) {
+    markSuspectChoice(player);
+  }
+
+  function handleSuspectCommit(player) {
+    markSuspectChoice(player);
+    if (!shouldCommitOnlineAction(`suspect:${player}`)) return;
+    voteSuspect(player);
   }
 
   function markDecisionChoice(value) {
@@ -1225,11 +1253,6 @@ function OnlineMode({ onExit, isMobile }) {
     setVoteFeedback((prev) => ({ ...prev, suspect: player }));
     showOnlineToast(`✓ ${player} selected`);
   }
-
-  useEffect(() => {
-    const interval = window.setInterval(() => setNow(Date.now()), 500);
-    return () => window.clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     if (room?.phase !== "decision") {
@@ -1589,14 +1612,14 @@ function OnlineMode({ onExit, isMobile }) {
       <div
         style={{
           position: "fixed",
-          left: "max(10px, env(safe-area-inset-left))",
-          bottom: "max(10px, env(safe-area-inset-bottom))",
+          left: "max(8px, env(safe-area-inset-left))",
+          top: "max(8px, env(safe-area-inset-top))",
           zIndex: 2147483647,
           padding: "3px 7px",
           borderRadius: 999,
           background: "rgba(15, 23, 42, 0.92)",
           color: "white",
-          fontSize: 13,
+          fontSize: 11,
           fontWeight: 900,
           pointerEvents: "none",
           ...NO_SELECTION_STYLE,
@@ -1608,21 +1631,22 @@ function OnlineMode({ onExit, isMobile }) {
       {onlineToast && (
         <div
           data-no-mobile-select="true"
+          role="status"
+          aria-live="polite"
           style={{
             position: "fixed",
             left: "max(12px, env(safe-area-inset-left))",
             right: "max(12px, env(safe-area-inset-right))",
-            top: isMobile ? "max(14px, env(safe-area-inset-top))" : "18px",
+            top: "max(94px, calc(env(safe-area-inset-top) + 84px))",
             zIndex: 2147483646,
-            padding: isMobile ? "16px 18px" : "13px 18px",
-            borderRadius: 18,
+            padding: isMobile ? "14px 16px" : "12px 16px",
+            borderRadius: 16,
             background: "#16a34a",
             color: "white",
             fontWeight: 950,
-            fontSize: isMobile ? 19 : 16,
+            fontSize: isMobile ? 17 : 15,
             textAlign: "center",
-            border: "3px solid #bbf7d0",
-            boxShadow: "0 20px 48px rgba(21, 128, 61, 0.42)",
+            boxShadow: "0 18px 42px rgba(21, 128, 61, 0.32)",
             ...NO_SELECTION_STYLE,
           }}
         >
@@ -1635,10 +1659,10 @@ function OnlineMode({ onExit, isMobile }) {
           data-no-mobile-select="true"
           style={{
             position: "fixed",
-            top: 8,
-            left: 8,
-            right: 8,
-            zIndex: 9998,
+            top: "max(58px, calc(env(safe-area-inset-top) + 48px))",
+            left: "max(10px, env(safe-area-inset-left))",
+            right: "max(10px, env(safe-area-inset-right))",
+            zIndex: 2147483645,
             padding: "13px 16px",
             borderRadius: 18,
             background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
@@ -1650,6 +1674,7 @@ function OnlineMode({ onExit, isMobile }) {
             letterSpacing: 1,
             textTransform: "uppercase",
             boxShadow: "0 16px 36px rgba(239, 68, 68, 0.30)",
+            pointerEvents: "none",
             ...NO_SELECTION_STYLE,
           }}
         >
@@ -1660,7 +1685,7 @@ function OnlineMode({ onExit, isMobile }) {
       <div style={{ maxWidth: 1180, margin: "0 auto", display: "grid", gap: 16, paddingTop: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 950, color: "#2563eb" }}>ONLINE MODE · VERSION v{ONLINE_APP_VERSION}</div>
+            <div style={{ fontSize: 13, fontWeight: 900, color: "#2563eb" }}>ONLINE MODE · v{ONLINE_APP_VERSION}</div>
             <h1 style={{ margin: "4px 0", fontSize: isMobile ? 30 : 44 }}>Impostor Online</h1>
             <div style={{ color: "#475569", fontWeight: 700 }}>Online affects only the regular mode. IRAD mode stays untouched.</div>
           </div>
@@ -1796,28 +1821,23 @@ function OnlineMode({ onExit, isMobile }) {
               {room.phase !== "lobby" && myAssignment && (
                 <div style={{ ...panelStyle, display: "grid", gap: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                    <div style={{ fontWeight: 950, color: "#172554", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span>{room.phase === "clue" ? `Turn: ${currentTurnPlayer}` : "Round decision"}</span>
-                      {isMyTurn && <span style={{ padding: "6px 10px", borderRadius: 999, background: "#dc2626", color: "white", fontSize: isMobile ? 15 : 14, fontWeight: 950 }}>YOUR TURN</span>}
-                    </div>
+                    <div style={{ fontWeight: 950, color: "#172554" }}>{room.phase === "clue" ? `Turn: ${currentTurnPlayer}` : "Round decision"}</div>
                     {room.phaseEndsAt && <div style={{ padding: "8px 12px", borderRadius: 999, background: secondsLeft <= 10 ? "#fee2e2" : "#dbeafe", color: secondsLeft <= 10 ? "#991b1b" : "#172554", fontWeight: 950 }}>⏱ {secondsLeft}s</div>}
                   </div>
 
-                  {room.phase === "clue" && (
-                    <div style={{ padding: "8px 10px", borderRadius: 12, background: isMyTurn ? "#fee2e2" : "#f8fafc", color: isMyTurn ? "#991b1b" : "#475569", fontWeight: 900, fontSize: isMobile ? 15 : 13, ...NO_SELECTION_STYLE }}>
-                      This device: {deviceDisplayName}{isMyTurn ? " · it is your turn now" : currentTurnPlayer ? ` · waiting for ${currentTurnPlayer}` : ""}
-                    </div>
-                  )}
+                  <div style={{ fontSize: 12, color: "#64748b", fontWeight: 800 }}>
+                    This device: {me?.name || name || "unknown"}
+                  </div>
 
                   {isMyTurn && (
                     <div style={{
-                      padding: isMobile ? "16px 18px" : "16px 20px",
-                      borderRadius: 20,
+                      padding: isMobile ? "12px 14px" : "14px 18px",
+                      borderRadius: 18,
                       background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
-                      border: "4px solid #ef4444",
+                      border: "2px solid #ef4444",
                       color: "#991b1b",
                       fontWeight: 950,
-                      fontSize: isMobile ? 30 : 30,
+                      fontSize: isMobile ? 24 : 28,
                       textAlign: "center",
                       letterSpacing: 0.8,
                       textTransform: "uppercase",
@@ -1859,10 +1879,10 @@ function OnlineMode({ onExit, isMobile }) {
                     <div style={{ display: "grid", gap: 10 }}>
                       <div style={{ fontWeight: 950 }}>Continue another clue round or guess the impostor?</div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button type="button" data-no-mobile-select="true" aria-pressed={visibleDecisionVote === "continue"} onClick={(event) => { event.preventDefault(); voteDecision("continue"); }} style={{ ...buttonStyle, minHeight: isMobile ? 58 : 48, border: visibleDecisionVote === "continue" ? "4px solid #bbf7d0" : "0", transform: visibleDecisionVote === "continue" ? "scale(1.03)" : "scale(1)", transition: "transform 120ms ease, background 120ms ease, box-shadow 120ms ease, border 120ms ease", background: visibleDecisionVote === "continue" ? "#16a34a" : buttonStyle.background, outline: visibleDecisionVote === "continue" ? "4px solid rgba(22,163,74,0.28)" : "none", boxShadow: visibleDecisionVote === "continue" ? "0 0 0 7px rgba(34,197,94,0.18), 0 14px 30px rgba(21,128,61,0.32)" : buttonStyle.boxShadow, width: isMobile ? "100%" : "auto" }}>{visibleDecisionVote === "continue" ? "✓ SELECTED: Another round" : "Another round"}</button>
-                        <button type="button" data-no-mobile-select="true" aria-pressed={visibleDecisionVote === "guess"} onClick={(event) => { event.preventDefault(); voteDecision("guess"); }} style={{ ...buttonStyle, minHeight: isMobile ? 58 : 48, border: visibleDecisionVote === "guess" ? "4px solid #bbf7d0" : "0", transform: visibleDecisionVote === "guess" ? "scale(1.03)" : "scale(1)", transition: "transform 120ms ease, background 120ms ease, box-shadow 120ms ease, border 120ms ease", background: visibleDecisionVote === "guess" ? "#16a34a" : "#dc2626", outline: visibleDecisionVote === "guess" ? "4px solid rgba(22,163,74,0.28)" : "none", boxShadow: visibleDecisionVote === "guess" ? "0 0 0 7px rgba(34,197,94,0.18), 0 14px 30px rgba(21,128,61,0.32)" : buttonStyle.boxShadow, width: isMobile ? "100%" : "auto" }}>{visibleDecisionVote === "guess" ? "✓ SELECTED: Guess impostor" : "Guess impostor"}</button>
+                        <button type="button" data-no-mobile-select="true" aria-pressed={visibleDecisionVote === "continue"} onPointerDown={() => handleDecisionPressStart("continue")} onTouchStart={() => handleDecisionPressStart("continue")} onPointerUp={() => handleDecisionCommit("continue")} onClick={() => handleDecisionCommit("continue")} style={{ ...buttonStyle, ...(visibleDecisionVote === "continue" ? selectedVoteButtonStyle : {}), transition: "transform 120ms ease, background 120ms ease, box-shadow 120ms ease", minHeight: isMobile ? 58 : 46, width: isMobile ? "100%" : "auto" }}>{visibleDecisionVote === "continue" ? "✓ SELECTED · Another round" : "Another round"}</button>
+                        <button type="button" data-no-mobile-select="true" aria-pressed={visibleDecisionVote === "guess"} onPointerDown={() => handleDecisionPressStart("guess")} onTouchStart={() => handleDecisionPressStart("guess")} onPointerUp={() => handleDecisionCommit("guess")} onClick={() => handleDecisionCommit("guess")} style={{ ...buttonStyle, background: "#dc2626", ...(visibleDecisionVote === "guess" ? selectedVoteButtonStyle : {}), transition: "transform 120ms ease, background 120ms ease, box-shadow 120ms ease", minHeight: isMobile ? 58 : 46, width: isMobile ? "100%" : "auto" }}>{visibleDecisionVote === "guess" ? "✓ SELECTED · Guess impostor" : "Guess impostor"}</button>
                       </div>
-                      {visibleDecisionVote && <div data-no-mobile-select="true" style={{ padding: isMobile ? "16px 16px" : "11px 14px", borderRadius: 16, background: "#dcfce7", border: "3px solid #22c55e", color: "#166534", fontWeight: 950, fontSize: isMobile ? 19 : 15, textAlign: "center", boxShadow: "0 10px 24px rgba(34,197,94,0.18)", ...NO_SELECTION_STYLE }}>✓ Your choice is selected: {visibleDecisionVote === "guess" ? "Guess impostor" : "Another round"}</div>}
+                      {visibleDecisionVote && <div style={{ padding: isMobile ? "12px 14px" : "9px 12px", borderRadius: 12, background: "#dcfce7", color: "#166534", fontWeight: 950, fontSize: isMobile ? 16 : 14, ...NO_SELECTION_STYLE }}>✓ Your vote was saved.</div>}
                     </div>
                   )}
 
@@ -1870,9 +1890,9 @@ function OnlineMode({ onExit, isMobile }) {
                     <div style={{ display: "grid", gap: 10 }}>
                       <div style={{ fontWeight: 950 }}>Vote who is the impostor</div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        {roundPlayerNames.map((player) => <button key={player} type="button" data-no-mobile-select="true" aria-pressed={visibleSuspectVote === player} onClick={(event) => { event.preventDefault(); voteSuspect(player); }} style={{ ...buttonStyle, minHeight: isMobile ? 58 : 48, border: visibleSuspectVote === player ? "4px solid #bbf7d0" : "0", transform: visibleSuspectVote === player ? "scale(1.03)" : "scale(1)", transition: "transform 120ms ease, background 120ms ease, box-shadow 120ms ease, border 120ms ease", background: visibleSuspectVote === player ? "#16a34a" : buttonStyle.background, outline: visibleSuspectVote === player ? "4px solid rgba(22,163,74,0.28)" : "none", boxShadow: visibleSuspectVote === player ? "0 0 0 7px rgba(34,197,94,0.18), 0 14px 30px rgba(21,128,61,0.32)" : buttonStyle.boxShadow, width: isMobile ? "100%" : "auto" }}>{visibleSuspectVote === player ? `✓ SELECTED: ${player}` : player}</button>)}
+                        {roundPlayerNames.map((player) => <button key={player} type="button" data-no-mobile-select="true" aria-pressed={visibleSuspectVote === player} onPointerDown={() => handleSuspectPressStart(player)} onTouchStart={() => handleSuspectPressStart(player)} onPointerUp={() => handleSuspectCommit(player)} onClick={() => handleSuspectCommit(player)} style={{ ...buttonStyle, ...(visibleSuspectVote === player ? selectedVoteButtonStyle : {}), transition: "transform 120ms ease, background 120ms ease, box-shadow 120ms ease", minHeight: isMobile ? 58 : 46, width: isMobile ? "100%" : "auto" }}>{visibleSuspectVote === player ? `✓ SELECTED · ${player}` : player}</button>)}
                       </div>
-                      {visibleSuspectVote && <div data-no-mobile-select="true" style={{ padding: isMobile ? "16px 16px" : "11px 14px", borderRadius: 16, background: "#dcfce7", border: "3px solid #22c55e", color: "#166534", fontWeight: 950, fontSize: isMobile ? 19 : 15, textAlign: "center", boxShadow: "0 10px 24px rgba(34,197,94,0.18)", ...NO_SELECTION_STYLE }}>✓ Your selected impostor: {visibleSuspectVote}</div>}
+                      {visibleSuspectVote && <div style={{ padding: isMobile ? "12px 14px" : "9px 12px", borderRadius: 12, background: "#dcfce7", color: "#166534", fontWeight: 950, fontSize: isMobile ? 16 : 14, ...NO_SELECTION_STYLE }}>✓ Your vote was saved: {visibleSuspectVote}</div>}
                     </div>
                   )}
 
