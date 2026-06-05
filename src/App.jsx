@@ -540,6 +540,7 @@ const MOBILE_TAP_STYLE = {
 };
 
 const CREWMATES_WINNER_KEY = "__CREWMATES__";
+const ONLINE_APP_VERSION = "1.0.1";
 
 function pickRandom(array) {
   return array[Math.floor(Math.random() * array.length)];
@@ -1517,7 +1518,53 @@ function OnlineMode({ onExit, isMobile }) {
 
   return (
     <div style={{ minHeight: "100vh", padding: isMobile ? 14 : 28, ...NO_SELECTION_STYLE, background: "radial-gradient(circle at top left, rgba(59, 130, 246, 0.35), transparent 28%), linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%)", color: "#111827" }}>
-      <div style={{ maxWidth: 1180, margin: "0 auto", display: "grid", gap: 16 }}>
+      <div
+        style={{
+          position: "fixed",
+          left: 8,
+          bottom: 8,
+          zIndex: 9999,
+          padding: "3px 7px",
+          borderRadius: 999,
+          background: "rgba(15, 23, 42, 0.72)",
+          color: "white",
+          fontSize: 11,
+          fontWeight: 900,
+          pointerEvents: "none",
+          ...NO_SELECTION_STYLE,
+        }}
+      >
+        v{ONLINE_APP_VERSION}
+      </div>
+
+      {joined && room && isMyTurn && isMobile && (
+        <div
+          data-no-mobile-select="true"
+          style={{
+            position: "fixed",
+            top: 8,
+            left: 8,
+            right: 8,
+            zIndex: 9998,
+            padding: "13px 16px",
+            borderRadius: 18,
+            background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
+            border: "3px solid #ef4444",
+            color: "#991b1b",
+            fontWeight: 950,
+            fontSize: 26,
+            textAlign: "center",
+            letterSpacing: 1,
+            textTransform: "uppercase",
+            boxShadow: "0 16px 36px rgba(239, 68, 68, 0.30)",
+            ...NO_SELECTION_STYLE,
+          }}
+        >
+          YOUR TURN
+        </div>
+      )}
+
+      <div style={{ maxWidth: 1180, margin: "0 auto", display: "grid", gap: 16, paddingTop: joined && room && isMyTurn && isMobile ? 72 : 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <div>
             <div style={{ fontSize: 13, fontWeight: 900, color: "#2563eb" }}>ONLINE MODE</div>
@@ -1533,7 +1580,7 @@ function OnlineMode({ onExit, isMobile }) {
           </div>
         )}
 
-        {joined && room && isMyTurn && (
+        {joined && room && isMyTurn && !isMobile && (
           <div
             data-no-mobile-select="true"
             style={{
@@ -1660,7 +1707,7 @@ function OnlineMode({ onExit, isMobile }) {
                     {room.phaseEndsAt && <div style={{ padding: "8px 12px", borderRadius: 999, background: secondsLeft <= 10 ? "#fee2e2" : "#dbeafe", color: secondsLeft <= 10 ? "#991b1b" : "#172554", fontWeight: 950 }}>⏱ {secondsLeft}s</div>}
                   </div>
 
-                  {isMyTurn && (
+                  {false && isMyTurn && (
                     <div style={{
                       padding: isMobile ? "12px 14px" : "14px 18px",
                       borderRadius: 18,
@@ -1710,8 +1757,8 @@ function OnlineMode({ onExit, isMobile }) {
                     <div style={{ display: "grid", gap: 10 }}>
                       <div style={{ fontWeight: 950 }}>Continue another clue round or guess the impostor?</div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button type="button" data-no-mobile-select="true" aria-pressed={myDecisionVote === "continue"} onTouchStart={() => setLocalDecisionVote("continue")} onClick={() => voteDecision("continue")} style={{ ...buttonStyle, background: myDecisionVote === "continue" ? "#16a34a" : buttonStyle.background, outline: myDecisionVote === "continue" ? "4px solid #bbf7d0" : "none", boxShadow: myDecisionVote === "continue" ? "0 0 0 5px rgba(34,197,94,0.16)" : buttonStyle.boxShadow, width: isMobile ? "100%" : "auto" }}>{myDecisionVote === "continue" ? "✓ Another round" : "Another round"}</button>
-                        <button type="button" data-no-mobile-select="true" aria-pressed={myDecisionVote === "guess"} onTouchStart={() => setLocalDecisionVote("guess")} onClick={() => voteDecision("guess")} style={{ ...buttonStyle, background: myDecisionVote === "guess" ? "#16a34a" : "#dc2626", outline: myDecisionVote === "guess" ? "4px solid #bbf7d0" : "none", boxShadow: myDecisionVote === "guess" ? "0 0 0 5px rgba(34,197,94,0.16)" : buttonStyle.boxShadow, width: isMobile ? "100%" : "auto" }}>{myDecisionVote === "guess" ? "✓ Guess impostor" : "Guess impostor"}</button>
+                        <button type="button" data-no-mobile-select="true" aria-pressed={myDecisionVote === "continue"} onPointerDown={() => setLocalDecisionVote("continue")} onTouchStart={() => setLocalDecisionVote("continue")} onClick={() => voteDecision("continue")} style={{ ...buttonStyle, transform: myDecisionVote === "continue" ? "scale(1.02)" : "scale(1)", transition: "transform 120ms ease, background 120ms ease, box-shadow 120ms ease", background: myDecisionVote === "continue" ? "#16a34a" : buttonStyle.background, outline: myDecisionVote === "continue" ? "4px solid #bbf7d0" : "none", boxShadow: myDecisionVote === "continue" ? "0 0 0 5px rgba(34,197,94,0.16)" : buttonStyle.boxShadow, width: isMobile ? "100%" : "auto" }}>{myDecisionVote === "continue" ? "✓ Another round" : "Another round"}</button>
+                        <button type="button" data-no-mobile-select="true" aria-pressed={myDecisionVote === "guess"} onPointerDown={() => setLocalDecisionVote("guess")} onTouchStart={() => setLocalDecisionVote("guess")} onClick={() => voteDecision("guess")} style={{ ...buttonStyle, transform: myDecisionVote === "guess" ? "scale(1.02)" : "scale(1)", transition: "transform 120ms ease, background 120ms ease, box-shadow 120ms ease", background: myDecisionVote === "guess" ? "#16a34a" : "#dc2626", outline: myDecisionVote === "guess" ? "4px solid #bbf7d0" : "none", boxShadow: myDecisionVote === "guess" ? "0 0 0 5px rgba(34,197,94,0.16)" : buttonStyle.boxShadow, width: isMobile ? "100%" : "auto" }}>{myDecisionVote === "guess" ? "✓ Guess impostor" : "Guess impostor"}</button>
                       </div>
                       {myDecisionVote && <div style={{ padding: isMobile ? "12px 14px" : "9px 12px", borderRadius: 12, background: "#dcfce7", color: "#166534", fontWeight: 950, fontSize: isMobile ? 16 : 14, ...NO_SELECTION_STYLE }}>✓ Your vote was saved.</div>}
                     </div>
@@ -1721,7 +1768,7 @@ function OnlineMode({ onExit, isMobile }) {
                     <div style={{ display: "grid", gap: 10 }}>
                       <div style={{ fontWeight: 950 }}>Vote who is the impostor</div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        {roundPlayerNames.map((player) => <button key={player} type="button" data-no-mobile-select="true" aria-pressed={mySuspectVote === player} onTouchStart={() => setLocalSuspectVote(player)} onClick={() => voteSuspect(player)} style={{ ...buttonStyle, background: mySuspectVote === player ? "#16a34a" : buttonStyle.background, outline: mySuspectVote === player ? "4px solid #bbf7d0" : "none", boxShadow: mySuspectVote === player ? "0 0 0 5px rgba(34,197,94,0.16)" : buttonStyle.boxShadow, width: isMobile ? "100%" : "auto" }}>{mySuspectVote === player ? `✓ ${player}` : player}</button>)}
+                        {roundPlayerNames.map((player) => <button key={player} type="button" data-no-mobile-select="true" aria-pressed={mySuspectVote === player} onPointerDown={() => setLocalSuspectVote(player)} onTouchStart={() => setLocalSuspectVote(player)} onClick={() => voteSuspect(player)} style={{ ...buttonStyle, transform: mySuspectVote === player ? "scale(1.02)" : "scale(1)", transition: "transform 120ms ease, background 120ms ease, box-shadow 120ms ease", background: mySuspectVote === player ? "#16a34a" : buttonStyle.background, outline: mySuspectVote === player ? "4px solid #bbf7d0" : "none", boxShadow: mySuspectVote === player ? "0 0 0 5px rgba(34,197,94,0.16)" : buttonStyle.boxShadow, width: isMobile ? "100%" : "auto" }}>{mySuspectVote === player ? `✓ ${player}` : player}</button>)}
                       </div>
                       {mySuspectVote && <div style={{ padding: isMobile ? "12px 14px" : "9px 12px", borderRadius: 12, background: "#dcfce7", color: "#166534", fontWeight: 950, fontSize: isMobile ? 16 : 14, ...NO_SELECTION_STYLE }}>✓ Your vote was saved: {mySuspectVote}</div>}
                     </div>
