@@ -540,7 +540,7 @@ const MOBILE_TAP_STYLE = {
 };
 
 const CREWMATES_WINNER_KEY = "__CREWMATES__";
-const ONLINE_APP_VERSION = "1.0.8";
+const ONLINE_APP_VERSION = "1.0.9";
 
 function pickRandom(array) {
   return array[Math.floor(Math.random() * array.length)];
@@ -1283,13 +1283,15 @@ function OnlineMode({ onExit, isMobile }) {
   const visibleDecisionVote = voteFeedback.decision || myDecisionVote;
   const visibleSuspectVote = voteFeedback.suspect || mySuspectVote;
 
-  function getCurrentRoundVoteTotal() {
-    return Math.max(0, roundPlayerNames.length);
+  function getCurrentRoundVoterIds() {
+    const roundNameSet = new Set((roundPlayerNames || []).map(normalizeOnlineIdentity).filter(Boolean));
+    const eligiblePlayers = players.filter((player) => roundNameSet.has(normalizeOnlineIdentity(player.name)));
+    return eligiblePlayers.map((player) => player.id).filter(Boolean);
   }
 
   function didEveryoneVote(votes) {
-    const total = getCurrentRoundVoteTotal();
-    return total > 0 && Object.keys(votes || {}).length >= total;
+    const voterIds = getCurrentRoundVoterIds();
+    return voterIds.length > 0 && voterIds.every((voterId) => Boolean((votes || {})[voterId]));
   }
 
   function getDecisionResolutionPatch(nextDecisionVotes) {
@@ -1387,13 +1389,11 @@ function OnlineMode({ onExit, isMobile }) {
   function markDecisionChoice(value) {
     setLocalDecisionVote(value);
     setVoteFeedback((prev) => ({ ...prev, decision: value }));
-    showOnlineToast(value === "guess" ? "✓ Guess impostor selected" : "✓ Another round selected");
   }
 
   function markSuspectChoice(player) {
     setLocalSuspectVote(player);
     setVoteFeedback((prev) => ({ ...prev, suspect: player }));
-    showOnlineToast(`✓ ${player} selected`);
   }
 
   useEffect(() => {
@@ -1479,10 +1479,6 @@ function OnlineMode({ onExit, isMobile }) {
     setOnlineUnavailable(false);
     setError("");
     try {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(ONLINE_NAME_KEY, cleanName);
-      }
-
       let existing = await firebaseGet(cleanUrl, cleanRoomId);
       const joinNow = Date.now();
 
@@ -1493,13 +1489,24 @@ function OnlineMode({ onExit, isMobile }) {
 
       const nextRoom = normalizeOnlineRoom(existing, cleanRoomId, clientId, cleanName);
       const prunedRoom = pruneInactiveOnlinePlayers(nextRoom, clientId, joinNow);
-      const usedNames = getOnlinePlayers(prunedRoom).filter((player) => player.id !== clientId).map((player) => player.name);
-      const uniqueName = usedNames.includes(cleanName) ? `${cleanName}-${clientId.slice(-4)}` : cleanName;
+      const duplicatePlayer = getOnlinePlayers(prunedRoom).find(
+        (player) => player.id !== clientId && normalizeOnlineIdentity(player.name) === normalizeOnlineIdentity(cleanName)
+      );
+
+      if (duplicatePlayer) {
+        setError("השם הזה כבר נמצא בחדר. צריך לבחור שם אחר.");
+        return;
+      }
+
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(ONLINE_NAME_KEY, cleanName);
+      }
+
       const updatedRoom = {
         ...prunedRoom,
         players: {
           ...(prunedRoom.players || {}),
-          [clientId]: { id: clientId, name: uniqueName, joinedAt: prunedRoom.players?.[clientId]?.joinedAt || joinNow, lastSeen: joinNow },
+          [clientId]: { id: clientId, name: cleanName, joinedAt: prunedRoom.players?.[clientId]?.joinedAt || joinNow, lastSeen: joinNow },
         },
         updatedAt: joinNow,
       };
@@ -1790,7 +1797,11 @@ function OnlineMode({ onExit, isMobile }) {
   }
 
   useEffect(() => {
-    if (!isHost || !room || !room.phaseEndsAt || Date.now() < room.phaseEndsAt) return;
+    if (!room || !room.phaseEndsAt || now < room.phaseEndsAt) return;
+
+    const timeoutKey = `timeout:${room.id}:${room.phase}:${room.phaseEndsAt}:${room.turnIndex ?? ""}`;
+    if (!shouldCommitOnlineAction(timeoutKey)) return;
+
     if (room.phase === "clue") {
       const isLastTurn = (room.turnIndex || 0) >= ((room.round?.assignments?.length || 1) - 1);
       patchRoom({
@@ -1801,12 +1812,7 @@ function OnlineMode({ onExit, isMobile }) {
       }).catch(() => {});
     }
     if (room.phase === "decision") {
-      const result = getVoteWinner(room.decisionVotes, "continue");
-      if (result === "guess") {
-        patchRoom({ phase: "suspect_vote", phaseEndsAt: Date.now() + ONLINE_SUSPECT_VOTE_SECONDS * 1000, suspectVotes: {} }).catch(() => {});
-      } else {
-        patchRoom({ phase: "clue", turnIndex: 0, phaseEndsAt: Date.now() + ONLINE_TURN_SECONDS * 1000, decisionVotes: {} }).catch(() => {});
-      }
+      patchRoom(getDecisionResolutionPatch(room.decisionVotes || {})).catch(() => {});
     }
     if (room.phase === "suspect_vote") {
       patchRoom(getSuspectResolutionPatch(room.suspectVotes || {})).catch(() => {});
@@ -1817,18 +1823,23 @@ function OnlineMode({ onExit, isMobile }) {
     if (room.phase === "host_override") {
       patchRoom({ phase: "game_over", phaseEndsAt: null, winner: { side: "crewmates", reason: "The impostor did not guess the word." } }).catch(() => {});
     }
-  }, [isHost, room, now]);
+  }, [room?.id, room?.phase, room?.phaseEndsAt, room?.turnIndex, now]);
 
   useEffect(() => {
-    if (!isHost || !room) return;
-    const total = roundPlayerNames.length;
-    if (room.phase === "decision" && total > 0 && Object.keys(room.decisionVotes || {}).length >= total) {
-      patchRoom(getDecisionResolutionPatch(room.decisionVotes || {})).catch(() => {});
+    if (!room) return;
+    if (room.phase === "decision" && didEveryoneVote(room.decisionVotes || {})) {
+      const resolutionKey = `all-voted:${room.id}:decision:${JSON.stringify(room.decisionVotes || {})}`;
+      if (shouldCommitOnlineAction(resolutionKey)) {
+        patchRoom(getDecisionResolutionPatch(room.decisionVotes || {})).catch(() => {});
+      }
     }
-    if (room.phase === "suspect_vote" && total > 0 && Object.keys(room.suspectVotes || {}).length >= total) {
-      patchRoom(getSuspectResolutionPatch(room.suspectVotes || {})).catch(() => {});
+    if (room.phase === "suspect_vote" && didEveryoneVote(room.suspectVotes || {})) {
+      const resolutionKey = `all-voted:${room.id}:suspect:${JSON.stringify(room.suspectVotes || {})}`;
+      if (shouldCommitOnlineAction(resolutionKey)) {
+        patchRoom(getSuspectResolutionPatch(room.suspectVotes || {})).catch(() => {});
+      }
     }
-  }, [isHost, room?.decisionVotes, room?.suspectVotes, room?.phase, roundPlayerNames.length]);
+  }, [room?.id, room?.decisionVotes, room?.suspectVotes, room?.phase, players, roundPlayerNames]);
 
   const panelStyle = {
     background: "rgba(255,255,255,0.78)",
@@ -2126,10 +2137,27 @@ function OnlineMode({ onExit, isMobile }) {
                     <div style={{ display: "grid", gap: 10 }}>
                       <div style={{ fontWeight: 950 }}>Continue another clue round or guess the impostor?</div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button type="button" data-no-mobile-select="true" aria-pressed={visibleDecisionVote === "continue"} onPointerDown={() => handleDecisionPressStart("continue")} onTouchStart={() => handleDecisionPressStart("continue")} onPointerUp={() => handleDecisionCommit("continue")} onClick={() => handleDecisionCommit("continue")} style={{ ...buttonStyle, ...(visibleDecisionVote === "continue" ? selectedVoteButtonStyle : {}), transition: "transform 120ms ease, background 120ms ease, box-shadow 120ms ease", minHeight: isMobile ? 58 : 46, width: isMobile ? "100%" : "auto" }}>{visibleDecisionVote === "continue" ? "✓ SELECTED · Another round" : "Another round"}</button>
-                        <button type="button" data-no-mobile-select="true" aria-pressed={visibleDecisionVote === "guess"} onPointerDown={() => handleDecisionPressStart("guess")} onTouchStart={() => handleDecisionPressStart("guess")} onPointerUp={() => handleDecisionCommit("guess")} onClick={() => handleDecisionCommit("guess")} style={{ ...buttonStyle, background: "#dc2626", ...(visibleDecisionVote === "guess" ? selectedVoteButtonStyle : {}), transition: "transform 120ms ease, background 120ms ease, box-shadow 120ms ease", minHeight: isMobile ? 58 : 46, width: isMobile ? "100%" : "auto" }}>{visibleDecisionVote === "guess" ? "✓ SELECTED · Guess impostor" : "Guess impostor"}</button>
+                        <button
+                          type="button"
+                          data-no-mobile-select="true"
+                          aria-pressed={visibleDecisionVote === "continue"}
+                          onPointerDown={() => handleDecisionCommit("continue")}
+                          onClick={() => handleDecisionCommit("continue")}
+                          style={{ ...buttonStyle, ...(visibleDecisionVote === "continue" ? selectedVoteButtonStyle : {}), transition: "transform 120ms ease, background 120ms ease, box-shadow 120ms ease", minHeight: isMobile ? 58 : 46, width: isMobile ? "100%" : "auto" }}
+                        >
+                          {visibleDecisionVote === "continue" ? "✓ SELECTED · Another round" : "Another round"}
+                        </button>
+                        <button
+                          type="button"
+                          data-no-mobile-select="true"
+                          aria-pressed={visibleDecisionVote === "guess"}
+                          onPointerDown={() => handleDecisionCommit("guess")}
+                          onClick={() => handleDecisionCommit("guess")}
+                          style={{ ...buttonStyle, background: "#dc2626", ...(visibleDecisionVote === "guess" ? selectedVoteButtonStyle : {}), transition: "transform 120ms ease, background 120ms ease, box-shadow 120ms ease", minHeight: isMobile ? 58 : 46, width: isMobile ? "100%" : "auto" }}
+                        >
+                          {visibleDecisionVote === "guess" ? "✓ SELECTED · Guess impostor" : "Guess impostor"}
+                        </button>
                       </div>
-                      {visibleDecisionVote && <div style={{ padding: isMobile ? "12px 14px" : "9px 12px", borderRadius: 12, background: "#dcfce7", color: "#166534", fontWeight: 950, fontSize: isMobile ? 16 : 14, ...NO_SELECTION_STYLE }}>✓ Your vote was saved.</div>}
                     </div>
                   )}
 
@@ -2137,9 +2165,37 @@ function OnlineMode({ onExit, isMobile }) {
                     <div style={{ display: "grid", gap: 10 }}>
                       <div style={{ fontWeight: 950 }}>Vote who is the impostor</div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        {roundPlayerNames.map((player) => <button key={player} type="button" data-no-mobile-select="true" aria-pressed={visibleSuspectVote === player} onPointerDown={() => handleSuspectPressStart(player)} onTouchStart={() => handleSuspectPressStart(player)} onPointerUp={() => handleSuspectCommit(player)} onClick={() => handleSuspectCommit(player)} style={{ ...buttonStyle, ...(visibleSuspectVote === player ? selectedVoteButtonStyle : {}), transition: "transform 120ms ease, background 120ms ease, box-shadow 120ms ease", minHeight: isMobile ? 58 : 46, width: isMobile ? "100%" : "auto" }}>{visibleSuspectVote === player ? `✓ SELECTED · ${player}` : player}</button>)}
+                        {roundPlayerNames.map((player) => {
+                          const isMeOption = isSelfName(player);
+                          return (
+                            <button
+                              key={player}
+                              type="button"
+                              data-no-mobile-select="true"
+                              disabled={isMeOption}
+                              aria-pressed={visibleSuspectVote === player}
+                              onPointerDown={() => {
+                                if (!isMeOption) handleSuspectCommit(player);
+                              }}
+                              onClick={() => {
+                                if (!isMeOption) handleSuspectCommit(player);
+                              }}
+                              style={{
+                                ...buttonStyle,
+                                ...(visibleSuspectVote === player ? selectedVoteButtonStyle : {}),
+                                background: isMeOption ? "#94a3b8" : (visibleSuspectVote === player ? selectedVoteButtonStyle.background : buttonStyle.background),
+                                opacity: isMeOption ? 0.55 : 1,
+                                cursor: isMeOption ? "not-allowed" : "pointer",
+                                transition: "transform 120ms ease, background 120ms ease, box-shadow 120ms ease",
+                                minHeight: isMobile ? 58 : 46,
+                                width: isMobile ? "100%" : "auto",
+                              }}
+                            >
+                              {isMeOption ? `${player} (you)` : (visibleSuspectVote === player ? `✓ SELECTED · ${player}` : player)}
+                            </button>
+                          );
+                        })}
                       </div>
-                      {visibleSuspectVote && <div style={{ padding: isMobile ? "12px 14px" : "9px 12px", borderRadius: 12, background: "#dcfce7", color: "#166534", fontWeight: 950, fontSize: isMobile ? 16 : 14, ...NO_SELECTION_STYLE }}>✓ Your vote was saved: {visibleSuspectVote}</div>}
                     </div>
                   )}
 
