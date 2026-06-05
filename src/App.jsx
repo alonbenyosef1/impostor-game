@@ -540,7 +540,7 @@ const MOBILE_TAP_STYLE = {
 };
 
 const CREWMATES_WINNER_KEY = "__CREWMATES__";
-const ONLINE_APP_VERSION = "1.0.9";
+const ONLINE_APP_VERSION = "1.0.10";
 
 function pickRandom(array) {
   return array[Math.floor(Math.random() * array.length)];
@@ -1171,6 +1171,31 @@ function normalizeOnlineRoom(rawRoom, fallbackRoomId, clientId, playerName) {
   };
 }
 
+function resetOnlineRoomForFreshJoin(room, clientId, playerName, now = Date.now()) {
+  return {
+    id: room?.id || "",
+    hostId: clientId,
+    createdAt: now,
+    updatedAt: now,
+    settings: room?.settings || { theme: "characters", pool: "all", difficulty: "medium", impostorGetsHint: true, impostorCount: 1, balancedImpostorMode: false, competitionMode: false },
+    frozenPlayers: [],
+    impostorMeta: room?.impostorMeta || { counts: {}, history: [] },
+    usedCharacters: room?.usedCharacters || [],
+    phase: "lobby",
+    round: null,
+    roundNumber: 0,
+    turnIndex: 0,
+    phaseEndsAt: null,
+    players: { [clientId]: { id: clientId, name: playerName || "Player", joinedAt: now, lastSeen: now } },
+    clues: [],
+    decisionVotes: {},
+    suspectVotes: {},
+    chat: room?.chat || [],
+    impostorGuess: "",
+    winner: null,
+  };
+}
+
 function getOnlinePlayers(room) {
   return Object.values(room?.players || {}).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
 }
@@ -1283,14 +1308,17 @@ function OnlineMode({ onExit, isMobile }) {
   const visibleDecisionVote = voteFeedback.decision || myDecisionVote;
   const visibleSuspectVote = voteFeedback.suspect || mySuspectVote;
 
-  function getCurrentRoundVoterIds() {
-    const roundNameSet = new Set((roundPlayerNames || []).map(normalizeOnlineIdentity).filter(Boolean));
-    const eligiblePlayers = players.filter((player) => roundNameSet.has(normalizeOnlineIdentity(player.name)));
+  function getCurrentRoundVoterIds(sourceRoom = room) {
+    const sourcePlayers = getOnlinePlayers(sourceRoom);
+    const fallbackNames = getOnlinePlayerNames(sourceRoom).filter((player) => !(sourceRoom?.frozenPlayers || []).includes(player));
+    const sourceRoundNames = sourceRoom?.round?.assignments?.map((assignment) => assignment.player) || fallbackNames;
+    const roundNameSet = new Set((sourceRoundNames || []).map(normalizeOnlineIdentity).filter(Boolean));
+    const eligiblePlayers = sourcePlayers.filter((player) => roundNameSet.has(normalizeOnlineIdentity(player.name)));
     return eligiblePlayers.map((player) => player.id).filter(Boolean);
   }
 
-  function didEveryoneVote(votes) {
-    const voterIds = getCurrentRoundVoterIds();
+  function didEveryoneVote(votes, sourceRoom = room) {
+    const voterIds = getCurrentRoundVoterIds(sourceRoom);
     return voterIds.length > 0 && voterIds.every((voterId) => Boolean((votes || {})[voterId]));
   }
 
@@ -1312,9 +1340,9 @@ function OnlineMode({ onExit, isMobile }) {
     };
   }
 
-  function getSuspectResolutionPatch(nextSuspectVotes) {
+  function getSuspectResolutionPatch(nextSuspectVotes, sourceRoom = room) {
     const suspect = getSuspectVoteWinner(nextSuspectVotes);
-    const correct = Boolean(suspect && room?.round?.impostorPlayers?.includes(suspect));
+    const correct = Boolean(suspect && sourceRoom?.round?.impostorPlayers?.includes(suspect));
 
     return {
       phase: correct ? "impostor_guess" : "game_over",
@@ -1488,7 +1516,16 @@ function OnlineMode({ onExit, isMobile }) {
       }
 
       const nextRoom = normalizeOnlineRoom(existing, cleanRoomId, clientId, cleanName);
-      const prunedRoom = pruneInactiveOnlinePlayers(nextRoom, clientId, joinNow);
+      let prunedRoom = pruneInactiveOnlinePlayers(nextRoom, clientId, joinNow);
+      const prunedPlayers = getOnlinePlayers(prunedRoom);
+      const hasAnyOtherPlayer = prunedPlayers.some((player) => player.id !== clientId);
+
+      // If a room record survived after everyone left, do not preserve its old phase/round.
+      // This also handles the same browser/client rejoining while its old clientId is still present in Firebase.
+      if (existing && !hasAnyOtherPlayer) {
+        prunedRoom = resetOnlineRoomForFreshJoin({ ...nextRoom, id: cleanRoomId }, clientId, cleanName, joinNow);
+      }
+
       const duplicatePlayer = getOnlinePlayers(prunedRoom).find(
         (player) => player.id !== clientId && normalizeOnlineIdentity(player.name) === normalizeOnlineIdentity(cleanName)
       );
@@ -1502,11 +1539,16 @@ function OnlineMode({ onExit, isMobile }) {
         window.localStorage.setItem(ONLINE_NAME_KEY, cleanName);
       }
 
+      const shouldResetOldRoundForSoloRejoin = existing && !hasAnyOtherPlayer && !prunedRoom.players?.[clientId] && prunedPlayers.length === 0;
+      const baseRoomForJoin = shouldResetOldRoundForSoloRejoin
+        ? resetOnlineRoomForFreshJoin({ ...prunedRoom, id: cleanRoomId }, clientId, cleanName, joinNow)
+        : prunedRoom;
+
       const updatedRoom = {
-        ...prunedRoom,
+        ...baseRoomForJoin,
         players: {
-          ...(prunedRoom.players || {}),
-          [clientId]: { id: clientId, name: cleanName, joinedAt: prunedRoom.players?.[clientId]?.joinedAt || joinNow, lastSeen: joinNow },
+          ...(baseRoomForJoin.players || {}),
+          [clientId]: { id: clientId, name: cleanName, joinedAt: baseRoomForJoin.players?.[clientId]?.joinedAt || joinNow, lastSeen: joinNow },
         },
         updatedAt: joinNow,
       };
@@ -1543,6 +1585,15 @@ function OnlineMode({ onExit, isMobile }) {
         }
 
         const prunedRoom = pruneInactiveOnlinePlayers(nextRoom, clientId, pollNow);
+        if (Object.keys(prunedRoom?.players || {}).length === 0) {
+          await firebaseDelete(cleanUrl, room.id).catch(() => {});
+          if (!cancelled) {
+            setRoom(null);
+            setJoined(false);
+            setError("");
+          }
+          return;
+        }
         if (JSON.stringify(prunedRoom.players || {}) !== JSON.stringify(nextRoom.players || {}) || prunedRoom.hostId !== nextRoom.hostId) {
           await firebasePut(cleanUrl, room.id, prunedRoom).catch(() => {});
           if (!cancelled) setRoom(prunedRoom);
@@ -1745,11 +1796,30 @@ function OnlineMode({ onExit, isMobile }) {
   async function voteDecision(value) {
     markDecisionChoice(value);
     try {
-      const nextDecisionVotes = { ...(room.decisionVotes || {}), [clientId]: value };
-      const nextPatch = didEveryoneVote(nextDecisionVotes)
-        ? { decisionVotes: nextDecisionVotes, ...getDecisionResolutionPatch(nextDecisionVotes) }
-        : { decisionVotes: nextDecisionVotes };
-      await patchRoom(nextPatch);
+      if (!room?.id || !firebaseUrl) return;
+      const cleanUrl = firebaseUrl.replace(/\/$/, "");
+      const voteAt = Date.now();
+
+      // Write only this player's vote so two players voting at the same time do not overwrite each other.
+      await firebasePatch(cleanUrl, room.id, {
+        [`decisionVotes/${clientId}`]: value,
+        updatedAt: voteAt,
+      });
+
+      const latestRoom = await firebaseGet(cleanUrl, room.id);
+      const nextDecisionVotes = { ...(latestRoom?.decisionVotes || {}), [clientId]: value };
+
+      if (didEveryoneVote(nextDecisionVotes, latestRoom)) {
+        const resolutionPatch = {
+          decisionVotes: nextDecisionVotes,
+          ...getDecisionResolutionPatch(nextDecisionVotes),
+          updatedAt: Date.now(),
+        };
+        await firebasePatch(cleanUrl, room.id, resolutionPatch);
+        setRoom((prev) => (prev ? { ...prev, ...resolutionPatch } : prev));
+      } else {
+        if (latestRoom) setRoom({ ...latestRoom, decisionVotes: nextDecisionVotes });
+      }
     } catch (err) {
       setLocalDecisionVote("");
       setVoteFeedback((prev) => ({ ...prev, decision: "" }));
@@ -1759,13 +1829,32 @@ function OnlineMode({ onExit, isMobile }) {
   }
 
   async function voteSuspect(player) {
+    if (isSelfName(player)) return;
     markSuspectChoice(player);
     try {
-      const nextSuspectVotes = { ...(room.suspectVotes || {}), [clientId]: player };
-      const nextPatch = didEveryoneVote(nextSuspectVotes)
-        ? getSuspectResolutionPatch(nextSuspectVotes)
-        : { suspectVotes: nextSuspectVotes };
-      await patchRoom(nextPatch);
+      if (!room?.id || !firebaseUrl) return;
+      const cleanUrl = firebaseUrl.replace(/\/$/, "");
+      const voteAt = Date.now();
+
+      // Write only this player's vote so simultaneous votes do not wipe each other.
+      await firebasePatch(cleanUrl, room.id, {
+        [`suspectVotes/${clientId}`]: player,
+        updatedAt: voteAt,
+      });
+
+      const latestRoom = await firebaseGet(cleanUrl, room.id);
+      const nextSuspectVotes = { ...(latestRoom?.suspectVotes || {}), [clientId]: player };
+
+      if (didEveryoneVote(nextSuspectVotes, latestRoom)) {
+        const resolutionPatch = {
+          ...getSuspectResolutionPatch(nextSuspectVotes, latestRoom),
+          updatedAt: Date.now(),
+        };
+        await firebasePatch(cleanUrl, room.id, resolutionPatch);
+        setRoom((prev) => (prev ? { ...prev, ...resolutionPatch } : prev));
+      } else {
+        if (latestRoom) setRoom({ ...latestRoom, suspectVotes: nextSuspectVotes });
+      }
     } catch (err) {
       setLocalSuspectVote("");
       setVoteFeedback((prev) => ({ ...prev, suspect: "" }));
@@ -1827,13 +1916,13 @@ function OnlineMode({ onExit, isMobile }) {
 
   useEffect(() => {
     if (!room) return;
-    if (room.phase === "decision" && didEveryoneVote(room.decisionVotes || {})) {
+    if (room.phase === "decision" && didEveryoneVote(room.decisionVotes || {}, room)) {
       const resolutionKey = `all-voted:${room.id}:decision:${JSON.stringify(room.decisionVotes || {})}`;
       if (shouldCommitOnlineAction(resolutionKey)) {
         patchRoom(getDecisionResolutionPatch(room.decisionVotes || {})).catch(() => {});
       }
     }
-    if (room.phase === "suspect_vote" && didEveryoneVote(room.suspectVotes || {})) {
+    if (room.phase === "suspect_vote" && didEveryoneVote(room.suspectVotes || {}, room)) {
       const resolutionKey = `all-voted:${room.id}:suspect:${JSON.stringify(room.suspectVotes || {})}`;
       if (shouldCommitOnlineAction(resolutionKey)) {
         patchRoom(getSuspectResolutionPatch(room.suspectVotes || {})).catch(() => {});
@@ -2055,14 +2144,14 @@ function OnlineMode({ onExit, isMobile }) {
                 )}
                 {room.phase === "lobby" && isHost && <button onClick={startOnlineRound} disabled={!canStartOnline} style={{ ...buttonStyle, opacity: canStartOnline ? 1 : 0.55 }}>Start game from 2 players</button>}
                 {room.phase === "lobby" && !isHost && <div style={{ color: "#475569", fontWeight: 800 }}>Waiting for the host to start.</div>}
-                {isHost && room.phase !== "lobby" && room.phase !== "game_over" && (
+                {isHost && room.phase !== "lobby" && (
                   <button
                     type="button"
                     onClick={skipOnlineRound}
                     disabled={!canStartOnline}
                     style={{ ...buttonStyle, background: "linear-gradient(135deg, #14b8a6 0%, #0ea5e9 100%)", opacity: canStartOnline ? 1 : 0.55 }}
                   >
-                    Skip round
+                    {room.phase === "game_over" ? "Start new round" : "Skip round"}
                   </button>
                 )}
                 {joinedAfterRoundStarted && (
