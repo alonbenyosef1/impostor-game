@@ -540,7 +540,7 @@ const MOBILE_TAP_STYLE = {
 };
 
 const CREWMATES_WINNER_KEY = "__CREWMATES__";
-const ONLINE_APP_VERSION = "1.0.10";
+const ONLINE_APP_VERSION = "1.0.11";
 
 function pickRandom(array) {
   return array[Math.floor(Math.random() * array.length)];
