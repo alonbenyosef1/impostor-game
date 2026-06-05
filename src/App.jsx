@@ -1411,17 +1411,6 @@ function OnlineMode({ onExit, isMobile }) {
     }
   }
 
-  function prepareMobileTap(event, previewAction) {
-    // Keep taps responsive on phones while preventing the browser from selecting text.
-    event.currentTarget?.blur?.();
-    if (typeof previewAction === "function") previewAction();
-  }
-
-  function preventDesktopTextSelection(event) {
-    // Prevent text selection on desktop without blocking mobile click/tap events.
-    event.preventDefault();
-  }
-
   async function submitImpostorGuess() {
     const guess = guessText.trim();
     if (!guess || !myAssignment?.isImpostor) return;
@@ -1528,29 +1517,6 @@ function OnlineMode({ onExit, isMobile }) {
 
   return (
     <div style={{ minHeight: "100vh", padding: isMobile ? 14 : 28, ...NO_SELECTION_STYLE, background: "radial-gradient(circle at top left, rgba(59, 130, 246, 0.35), transparent 28%), linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%)", color: "#111827" }}>
-      {isMyTurn && (
-        <div style={{
-          position: "sticky",
-          top: isMobile ? 8 : 12,
-          zIndex: 50,
-          maxWidth: isMobile ? "100%" : 1180,
-          margin: "0 auto 12px",
-          padding: isMobile ? "12px 14px" : "14px 18px",
-          borderRadius: isMobile ? 16 : 20,
-          background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
-          border: "2px solid #ef4444",
-          color: "#991b1b",
-          fontWeight: 950,
-          fontSize: isMobile ? 22 : 30,
-          textAlign: "center",
-          letterSpacing: isMobile ? 0.6 : 1,
-          textTransform: "uppercase",
-          boxShadow: "0 14px 30px rgba(239, 68, 68, 0.25)",
-          ...NO_SELECTION_STYLE,
-        }}>
-          YOUR TURN
-        </div>
-      )}
       <div style={{ maxWidth: 1180, margin: "0 auto", display: "grid", gap: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <div>
@@ -1564,6 +1530,31 @@ function OnlineMode({ onExit, isMobile }) {
         {onlineUnavailable && (
           <div style={{ ...panelStyle, border: "1px solid rgba(220, 38, 38, 0.35)", background: "#fff1f2", color: "#991b1b", fontWeight: 900 }}>
             Online mode is currently unavailable. You can go back and keep playing offline normally.
+          </div>
+        )}
+
+        {joined && room && isMyTurn && (
+          <div
+            data-no-mobile-select="true"
+            style={{
+              position: "sticky",
+              top: isMobile ? 8 : 12,
+              zIndex: 50,
+              padding: isMobile ? "14px 16px" : "16px 20px",
+              borderRadius: isMobile ? 18 : 22,
+              background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
+              border: "3px solid #ef4444",
+              color: "#991b1b",
+              fontWeight: 950,
+              fontSize: isMobile ? 26 : 30,
+              textAlign: "center",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              boxShadow: "0 16px 36px rgba(239, 68, 68, 0.26)",
+              ...NO_SELECTION_STYLE,
+            }}
+          >
+            YOUR TURN
           </div>
         )}
 
@@ -1603,6 +1594,27 @@ function OnlineMode({ onExit, isMobile }) {
                     );
                   })}
                 </div>
+                {room.phase === "lobby" && isHost && isMobile && (
+                  <div style={{ display: "grid", gap: 8, padding: 12, borderRadius: 16, background: "#f8fafc", border: "2px solid rgba(37, 99, 235, 0.18)" }}>
+                    <div style={{ fontWeight: 950, color: "#172554" }}>Host quick controls - freeze players</div>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      {players.map((player) => {
+                        const frozen = (room.frozenPlayers || []).includes(player.name);
+                        return (
+                          <button
+                            key={`mobile-freeze-${player.id}`}
+                            type="button"
+                            data-no-mobile-select="true"
+                            onClick={() => toggleOnlineFreeze(player.name)}
+                            style={{ ...buttonStyle, background: frozen ? "#64748b" : "#2563eb", width: "100%" }}
+                          >
+                            {frozen ? "✓ Frozen - tap to unfreeze" : "Freeze"} {player.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 {room.phase === "lobby" && isHost && (
                   <div style={{ display: "grid", gap: 10, padding: 12, borderRadius: 18, background: "rgba(248,250,252,0.9)", border: "1px solid rgba(148,163,184,0.25)" }}>
                     <div style={{ fontWeight: 950, color: "#172554" }}>Host game settings</div>
@@ -1630,7 +1642,7 @@ function OnlineMode({ onExit, isMobile }) {
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         {players.map((player) => {
                           const frozen = (room.frozenPlayers || []).includes(player.name);
-                          return <button key={`freeze-${player.id}`} onClick={() => toggleOnlineFreeze(player.name)} style={{ ...buttonStyle, background: frozen ? "#64748b" : "#2563eb", padding: "9px 12px" }}>{frozen ? "Unfreeze" : "Freeze"} {player.name}</button>;
+                          return <button key={`freeze-${player.id}`} type="button" data-no-mobile-select="true" onClick={() => toggleOnlineFreeze(player.name)} style={{ ...buttonStyle, background: frozen ? "#64748b" : "#2563eb", padding: isMobile ? "12px 14px" : "9px 12px", width: isMobile ? "100%" : "auto", justifyContent: "center" }}>{frozen ? "✓ Frozen - tap to unfreeze" : "Freeze"} {player.name}</button>;
                         })}
                       </div>
                     </div>
@@ -1698,10 +1710,10 @@ function OnlineMode({ onExit, isMobile }) {
                     <div style={{ display: "grid", gap: 10 }}>
                       <div style={{ fontWeight: 950 }}>Continue another clue round or guess the impostor?</div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button type="button" aria-pressed={myDecisionVote === "continue"} data-no-mobile-select="true" onMouseDown={preventDesktopTextSelection} onPointerDown={(event) => prepareMobileTap(event, () => setLocalDecisionVote("continue"))} onClick={() => voteDecision("continue")} style={{ ...buttonStyle, ...MOBILE_TAP_STYLE, minHeight: 48, background: myDecisionVote === "continue" ? "#16a34a" : buttonStyle.background, color: "white", outline: myDecisionVote === "continue" ? "4px solid #bbf7d0" : "none", transform: myDecisionVote === "continue" ? "scale(1.02)" : "none", boxShadow: myDecisionVote === "continue" ? "0 0 0 5px rgba(34,197,94,0.16)" : buttonStyle.boxShadow }}>{myDecisionVote === "continue" ? "✓ Another round" : "Another round"}</button>
-                        <button type="button" aria-pressed={myDecisionVote === "guess"} data-no-mobile-select="true" onMouseDown={preventDesktopTextSelection} onPointerDown={(event) => prepareMobileTap(event, () => setLocalDecisionVote("guess"))} onClick={() => voteDecision("guess")} style={{ ...buttonStyle, ...MOBILE_TAP_STYLE, minHeight: 48, background: myDecisionVote === "guess" ? "#16a34a" : "#dc2626", color: "white", outline: myDecisionVote === "guess" ? "4px solid #bbf7d0" : "none", transform: myDecisionVote === "guess" ? "scale(1.02)" : "none", boxShadow: myDecisionVote === "guess" ? "0 0 0 5px rgba(34,197,94,0.16)" : buttonStyle.boxShadow }}>{myDecisionVote === "guess" ? "✓ Guess impostor" : "Guess impostor"}</button>
+                        <button type="button" data-no-mobile-select="true" aria-pressed={myDecisionVote === "continue"} onTouchStart={() => setLocalDecisionVote("continue")} onClick={() => voteDecision("continue")} style={{ ...buttonStyle, background: myDecisionVote === "continue" ? "#16a34a" : buttonStyle.background, outline: myDecisionVote === "continue" ? "4px solid #bbf7d0" : "none", boxShadow: myDecisionVote === "continue" ? "0 0 0 5px rgba(34,197,94,0.16)" : buttonStyle.boxShadow, width: isMobile ? "100%" : "auto" }}>{myDecisionVote === "continue" ? "✓ Another round" : "Another round"}</button>
+                        <button type="button" data-no-mobile-select="true" aria-pressed={myDecisionVote === "guess"} onTouchStart={() => setLocalDecisionVote("guess")} onClick={() => voteDecision("guess")} style={{ ...buttonStyle, background: myDecisionVote === "guess" ? "#16a34a" : "#dc2626", outline: myDecisionVote === "guess" ? "4px solid #bbf7d0" : "none", boxShadow: myDecisionVote === "guess" ? "0 0 0 5px rgba(34,197,94,0.16)" : buttonStyle.boxShadow, width: isMobile ? "100%" : "auto" }}>{myDecisionVote === "guess" ? "✓ Guess impostor" : "Guess impostor"}</button>
                       </div>
-                      {myDecisionVote && <div style={{ padding: "9px 12px", borderRadius: 12, background: "#dcfce7", color: "#166534", fontWeight: 950, ...NO_SELECTION_STYLE }}>✓ Your vote was saved.</div>}
+                      {myDecisionVote && <div style={{ padding: isMobile ? "12px 14px" : "9px 12px", borderRadius: 12, background: "#dcfce7", color: "#166534", fontWeight: 950, fontSize: isMobile ? 16 : 14, ...NO_SELECTION_STYLE }}>✓ Your vote was saved.</div>}
                     </div>
                   )}
 
@@ -1709,9 +1721,9 @@ function OnlineMode({ onExit, isMobile }) {
                     <div style={{ display: "grid", gap: 10 }}>
                       <div style={{ fontWeight: 950 }}>Vote who is the impostor</div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        {roundPlayerNames.map((player) => <button key={player} type="button" aria-pressed={mySuspectVote === player} data-no-mobile-select="true" onMouseDown={preventDesktopTextSelection} onPointerDown={(event) => prepareMobileTap(event, () => setLocalSuspectVote(player))} onClick={() => voteSuspect(player)} style={{ ...buttonStyle, ...MOBILE_TAP_STYLE, minHeight: 48, background: mySuspectVote === player ? "#16a34a" : buttonStyle.background, color: "white", outline: mySuspectVote === player ? "4px solid #bbf7d0" : "none", transform: mySuspectVote === player ? "scale(1.02)" : "none", boxShadow: mySuspectVote === player ? "0 0 0 5px rgba(34,197,94,0.16)" : buttonStyle.boxShadow }}>{mySuspectVote === player ? `✓ ${player}` : player}</button>)}
+                        {roundPlayerNames.map((player) => <button key={player} type="button" data-no-mobile-select="true" aria-pressed={mySuspectVote === player} onTouchStart={() => setLocalSuspectVote(player)} onClick={() => voteSuspect(player)} style={{ ...buttonStyle, background: mySuspectVote === player ? "#16a34a" : buttonStyle.background, outline: mySuspectVote === player ? "4px solid #bbf7d0" : "none", boxShadow: mySuspectVote === player ? "0 0 0 5px rgba(34,197,94,0.16)" : buttonStyle.boxShadow, width: isMobile ? "100%" : "auto" }}>{mySuspectVote === player ? `✓ ${player}` : player}</button>)}
                       </div>
-                      {mySuspectVote && <div style={{ padding: "9px 12px", borderRadius: 12, background: "#dcfce7", color: "#166534", fontWeight: 950, ...NO_SELECTION_STYLE }}>✓ Your vote was saved: {mySuspectVote}</div>}
+                      {mySuspectVote && <div style={{ padding: isMobile ? "12px 14px" : "9px 12px", borderRadius: 12, background: "#dcfce7", color: "#166534", fontWeight: 950, fontSize: isMobile ? 16 : 14, ...NO_SELECTION_STYLE }}>✓ Your vote was saved: {mySuspectVote}</div>}
                     </div>
                   )}
 
